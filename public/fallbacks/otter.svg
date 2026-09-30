@@ -1,0 +1,45 @@
+<svg width="480" height="480" viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Devin's otter mascot">
+<!-- "La nutria de Devin" — flat fallback for the WebGPU otter scene.
+     Same silhouette as the 3D figure: seated body, round head with small
+     ears, taupe muzzle and eye patches, dark nose, whiskers, clasped paws,
+     and the tail sweeping out to the side along the ground. -->
+<g>
+  <!-- tail, sweeping right along the ground -->
+  <path d="M322 396C356 388 398 396 424 428C404 434 356 432 318 424Z" fill="#1b1a19"/>
+  <!-- hind feet -->
+  <ellipse cx="150" cy="432" rx="40" ry="18" fill="#1b1a19"/>
+  <ellipse cx="330" cy="432" rx="40" ry="18" fill="#1b1a19"/>
+  <!-- seated body -->
+  <ellipse cx="240" cy="336" rx="126" ry="118" fill="#1b1a19"/>
+  <!-- belly patch -->
+  <ellipse cx="240" cy="352" rx="56" ry="62" fill="#8b897f"/>
+  <!-- clasped front paws -->
+  <ellipse cx="214" cy="308" rx="23" ry="31" fill="#1b1a19" transform="rotate(-20 214 308)"/>
+  <ellipse cx="266" cy="308" rx="23" ry="31" fill="#1b1a19" transform="rotate(20 266 308)"/>
+  <!-- head -->
+  <circle cx="240" cy="176" r="96" fill="#1b1a19"/>
+  <!-- ears -->
+  <circle cx="163" cy="92" r="24" fill="#1b1a19"/>
+  <circle cx="317" cy="92" r="24" fill="#1b1a19"/>
+  <!-- eye patches + bead eyes + catchlights -->
+  <circle cx="200" cy="162" r="19" fill="#8b897f"/>
+  <circle cx="280" cy="162" r="19" fill="#8b897f"/>
+  <circle cx="200" cy="163" r="9" fill="#141412"/>
+  <circle cx="280" cy="163" r="9" fill="#141412"/>
+  <circle cx="197.4" cy="159.6" r="2.8" fill="#f4f4f1"/>
+  <circle cx="277.4" cy="159.6" r="2.8" fill="#f4f4f1"/>
+  <!-- muzzle -->
+  <ellipse cx="240" cy="216" rx="54" ry="33" fill="#8b897f"/>
+  <!-- nose -->
+  <ellipse cx="240" cy="199" rx="17" ry="11" fill="#141412"/>
+  <!-- whiskers -->
+  <g stroke="#b8b7ae" stroke-width="2.6" stroke-linecap="round">
+    <line x1="190" y1="206" x2="112" y2="196"/>
+    <line x1="190" y1="215" x2="114" y2="214"/>
+    <line x1="190" y1="224" x2="118" y2="232"/>
+    <line x1="290" y1="206" x2="368" y2="196"/>
+    <line x1="290" y1="215" x2="366" y2="214"/>
+    <line x1="290" y1="224" x2="362" y2="232"/>
+  </g>
+</g>
+</svg>

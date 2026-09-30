@@ -60,7 +60,7 @@ export const OPENCODE_OMEGA = (Math.PI * 2) / OPENCODE_MARK.turnSeconds;
 /* Ring geometry: rect-frame profile extruded in Z, chamfered edges    */
 /* ------------------------------------------------------------------ */
 
-interface MeshData {
+export interface MeshData {
   /** Interleaved [x,y,z, nx,ny,nz] per vertex. */
   readonly vertices: Float32Array<ArrayBuffer>;
   readonly indices: Uint32Array<ArrayBuffer>;
@@ -81,7 +81,7 @@ type V3 = [number, number, number];
  * and flips winding when it disagrees with the desired outward normal, so
  * `cull: "back"` is always safe.
  */
-function buildRingGeometry(
+export function buildRingGeometry(
   halfW: number,
   halfH: number,
   holeHalfW: number,

@@ -90,13 +90,13 @@ con responsables, dependencias y una forma de verificar cada tarea.
 
 # 02 / COMPARTIR CONTEXTO — Tu equipo y sus IAs, con la misma memoria
 
-intro: Cinco computadoras, varias IAs, una sola memoria. Cerebro Compartido guarda decisiones y trabajo en Markdown, dentro del repo del equipo.
+intro: Cerebro Compartido es un plugin que guarda las decisiones y el trabajo del equipo en Markdown, dentro de un repo común. Básicamente, todas las computadoras e IAs del equipo leen y escriben en el mismo lugar.
 
-`team/` guarda la verdad compartida. `each_one/<vos>/` guarda el trabajo de cada persona o agente.
+El repo se divide en dos: `team/` guarda la verdad compartida y `each_one/<vos>/` guarda el trabajo de cada persona o agente.
 
 > Pregunta real de una hackathon: "¿qué hizo Nano en la última media hora?" Con cerebro, la respuesta está en el repo — no en la memoria de nadie.
 
-Puede ayudar a retomar una tarea, encontrar una decisión y ver lo que hizo otro sin volver a explicarle el proyecto a cada IA.
+Lo usaría para retomar una tarea, encontrar una decisión y ver qué hizo otro sin volver a explicarle el proyecto a cada IA.
 
 ### Paso 1 — Instalar y configurar
 
@@ -125,13 +125,19 @@ nota: El vault de Hack CBA se sincronizó entre cinco computadoras. Las decision
 
 # 03 / EJECUTAR — Devin con SWE, u OpenCode
 
-intro: El agente no adivina: ejecuta lo que la spec define y el cerebro recuerda. Tu rol cambia — de escribir código a definir tareas y verificar entregas.
+intro: El agente no adivina: ejecuta lo que la spec define y el cerebro recuerda. Básicamente tu rol cambia — pasás de escribir código a definir tareas concretas y verificar lo que entrega.
+
+[SCENE:arena — Devin y la O de OpenCode conviviendo en un mismo espacio con física; agarrables y lanzables]
+caption: DEVIN Y LA «O» DE OPENCODE, EN LA MISMA ARENA — AGARRÁLAS Y TIRÁLAS.
+[/SCENE]
 
 ## Devin + modelos SWE
 
-Devin puede escribir, ejecutar y probar código. SWE es la familia de modelos de Cognition: el agente y el modelo cumplen roles distintos.
+Devin puede escribir, ejecutar y probar código solo. SWE es la familia de modelos de Cognition: el agente y el modelo cumplen roles distintos.
 
-Una tarea delimitada, un contrato de entrada/salida, una comprobación concreta. Lo que entrega se revisa como el trabajo de cualquier compañero: antes de integrarlo.
+Para la hackathon le daría una tarea delimitada, el contrato de entrada/salida y una comprobación concreta. Lo que entrega se revisa igual que el trabajo de cualquier compañero: antes de integrarlo.
+
+[SCENE:otter — la nutria de Devin, mascota, en 3D junto al texto]
 
 **Hablá con Erasmo Hernández** para consultar demos, acceso o actividades de comunidad de Cognition. Créditos o beneficios dependen de lo que esté disponible.
 
@@ -142,24 +148,18 @@ links:
 
 ## OpenCode, controlando el gasto
 
-Agente open source para terminal, IDE o escritorio. Permite usar modelos gratuitos disponibles o conectar un proveedor.
+OpenCode es un agente open source que corre en la terminal, el IDE o el escritorio. Permite usar modelos gratuitos disponibles o conectar un proveedor.
 
-Puede ser una opción barata si elegís bien el modelo y acotás las tareas. El software abierto no elimina el costo de las APIs.
+Es una opción barata si elegís bien el modelo y acotás las tareas — que el software sea abierto no hace gratis a las APIs.
 
-Modelo barato para cambios simples, modelo capaz cuando el problema lo pide. La métrica que importa: cuánto gastás por tarea terminada.
+Usaría un modelo barato para cambios simples y uno más capaz cuando el problema lo pide. La métrica que importa: cuánto gastás por tarea terminada.
 
 links:
 
 - [https://opencode.ai/](https://opencode.ai/) — OpenCode
 - [https://devin.ai/pricing](https://devin.ai/pricing) — Planes de Devin
 
-[SCENE:devin — interactivo]
-caption: DEVIN, EXTRUIDO EN VIVO. EL RENDER TAMBIÉN SE DELEGÓ.
-[/SCENE]
 
-[SCENE:opencode — interactivo]
-caption: LA «O» DE OPENCODE. ABIERTA, COMO CORRESPONDE.
-[/SCENE]
 
 [PROMPT:delegar]
 Leé la spec y el contexto del cerebro antes de empezar.
@@ -176,13 +176,13 @@ nota: La disponibilidad de modelos SWE y las cuotas dependen del producto y del 
 
 # 04 / HACER VISIBLE LA IDEA — vgpu.sh
 
-intro: Las demos se juzgan con los ojos. vgpu es una biblioteca TypeScript de WebGPU para shaders y gráficos acelerados, con docs y ejemplos pensados también para agentes.
+intro: vgpu es una biblioteca de TypeScript para hacer gráficos con WebGPU — shaders, efectos y visualizaciones aceleradas por GPU. Viene con documentación y ejemplos pensados también para agentes.
 
-Sirve para construir efectos y visualizaciones en el navegador. También tiene soporte para ejecución en Node y pruebas.
+Sirve para construir visuales en el navegador, y también corre en Node para hacer pruebas headless.
 
 > Si el jurado entiende el producto en diez segundos, los otros cincuenta son tuyos.
 
-Esta página es su propia demo: el cerebro, la marca de Devin y la O de OpenCode están hechos con vgpu y se renderizan en tu navegador, ahora.
+Esta página es su propia demo: el cerebro de la portada, la nutria de Devin y la O de OpenCode están hechos con vgpu y se renderizan en tu navegador, ahora.
 
 links:
 
@@ -191,10 +191,10 @@ links:
 
 ## Cómo lo usaría en una hackathon
 
-1. Elegiría una visualización que ayude a entender el problema.
-2. Partiría de un ejemplo existente.
+1. Buscaría en los ejemplos algo que ayude a explicar el problema.
+2. Partiría de ese ejemplo, no de cero.
 3. Le daría al agente la documentación y el objetivo visual.
-4. Probaría en el equipo y navegador de la demo, con una alternativa estática.
+4. Lo probaría en la máquina y el navegador de la demo, con una alternativa estática.
 
 ```
 npx vgpu docs
@@ -208,7 +208,7 @@ nota: Ejemplo de uso propuesto: mostrar un terreno o un fenómeno visual. No ree
 
 # 05 / TEMAS QUE SUMARÍA — La demo también se construye
 
-intro: El código es la mitad del trabajo. La otra mitad es recorrido, integración y pitch — y también se construye.
+intro: Básicamente: el código es la mitad del trabajo. La otra mitad es recorrido, integración y pitch — y también se construye.
 
 ### MVP y criterio del jurado
 
@@ -226,6 +226,43 @@ Ensayar problema, solución y demo. Tener datos listos y una grabación de respa
 Nada está listo hasta que se puede mostrar.
 El agente termina. El equipo verifica. La demo convence.
 [/BANDA OSCURA]
+
+---
+
+# 06 / PARA EMPEZAR — Un prompt para dejar todo listo
+
+intro: Básicamente: si arrancás una hackathon mañana, pegá esto en tu agente y tenés el flujo completo — cerebro, spec, plan y visuales.
+
+[PROMPT:setup — el mega-prompt, se muestra siempre abierto]
+Preparame el setup completo para una hackathon con este flujo:
+
+1. CEREBRO — Instalá el plugin cerebro-compartido
+   (github.com/JMReader/cerebro-compartido) y corré cerebro-setup
+   conmigo. Dejá el vault creado y team/ con las decisiones
+   iniciales del proyecto.
+
+2. SPEC — Creá tres documentos en el repo:
+   · spec-funcional.md: usuario, problema, flujo principal,
+     qué queda afuera y criterios de aceptación.
+   · spec-tecnica.md: stack, contratos de datos y qué se simula
+     para la demo.
+   · plan.md: tareas chicas con responsable, dependencias y
+     cómo se verifica cada una.
+   Arrancalos con lo que sepas y marcame las preguntas que
+   falten antes de codear.
+
+3. DEMO — Si la demo vive en el navegador, instalá vgpu
+   (npm i vgpu) y dejame una escena de ejemplo corriendo con
+   fallback estático.
+
+4. PLAN DE AGENTES — Asigname qué hace cada agente del equipo:
+   tarea, contrato de entrada/salida y criterio verificable.
+
+Cuando termines, cerrá con cerebro-cierre así cualquier agente
+retoma el contexto sin que se lo repita.
+[/PROMPT]
+
+nota: Ajustalo al proyecto concreto antes de mandarlo. Un agente con contexto equivocado prepara muy bien el proyecto equivocado.
 
 ---
 

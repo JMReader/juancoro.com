@@ -3,8 +3,8 @@ import { HeaderActions } from "../../components/HeaderActions";
 import { ExitProject } from "../../components/ExitProject";
 import { CopyPrompt } from "../../components/CopyPrompt";
 import { BrainScene } from "../../components/visuals/brain/BrainScene";
-import { DevinMark } from "../../components/visuals/devin/DevinMark";
-import { OpenCodeMark } from "../../components/visuals/opencode/OpenCodeMark";
+import { ArenaScene } from "../../components/visuals/arena/ArenaScene";
+import { OtterScene } from "../../components/visuals/otter/OtterScene";
 
 const TITLE = "Cómo ganar un hackathon: recursos y herramientas";
 const DESCRIPTION =
@@ -44,6 +44,33 @@ Entrada esperada: [contrato]. Salida esperada: [contrato].
 El resultado está listo cuando: [criterio verificable].
 Si el contrato es ambiguo, preguntá antes de cambiarlo.
 Mostrame cómo lo comprobaste y cerrá con cerebro-cierre.`;
+
+const PROMPT_SETUP = `Preparame el setup completo para una hackathon con este flujo:
+
+1. CEREBRO — Instalá el plugin cerebro-compartido
+   (github.com/JMReader/cerebro-compartido) y corré cerebro-setup
+   conmigo. Dejá el vault creado y team/ con las decisiones
+   iniciales del proyecto.
+
+2. SPEC — Creá tres documentos en el repo:
+   · spec-funcional.md: usuario, problema, flujo principal,
+     qué queda afuera y criterios de aceptación.
+   · spec-tecnica.md: stack, contratos de datos y qué se simula
+     para la demo.
+   · plan.md: tareas chicas con responsable, dependencias y
+     cómo se verifica cada una.
+   Arrancalos con lo que sepas y marcame las preguntas que
+   falten antes de codear.
+
+3. DEMO — Si la demo vive en el navegador, instalá vgpu
+   (npm i vgpu) y dejame una escena de ejemplo corriendo con
+   fallback estático.
+
+4. PLAN DE AGENTES — Asigname qué hace cada agente del equipo:
+   tarea, contrato de entrada/salida y criterio verificable.
+
+Cuando termines, cerrá con cerebro-cierre así cualquier agente
+retoma el contexto sin que se lo repita.`;
 
 const JSON_LD = {
   "@context": "https://schema.org",
@@ -297,14 +324,15 @@ export default function ComoGanarUnHackathon() {
                 con la misma memoria
               </h2>
               <p className="intro">
-                Cinco computadoras, varias IAs, una sola memoria. Cerebro
-                Compartido guarda decisiones y trabajo en Markdown, dentro del
-                repo del equipo.
+                Cerebro Compartido es un plugin que guarda las decisiones y el
+                trabajo del equipo en Markdown, dentro de un repo común.
+                Básicamente, todas las computadoras e IAs del equipo leen y
+                escriben en el mismo lugar.
               </p>
               <p>
-                <code>team/</code> guarda la verdad compartida.{" "}
-                <code>each_one/&lt;vos&gt;/</code> guarda el trabajo de cada
-                persona o agente.
+                El repo se divide en dos: <code>team/</code> guarda la verdad
+                compartida y <code>each_one/&lt;vos&gt;/</code> guarda el
+                trabajo de cada persona o agente.
               </p>
               <blockquote>
                 Pregunta real de una hackathon: “¿qué hizo Nano en la última
@@ -312,8 +340,8 @@ export default function ComoGanarUnHackathon() {
                 la memoria de nadie.
               </blockquote>
               <p>
-                Puede ayudar a retomar una tarea, encontrar una decisión y ver
-                lo que hizo otro sin volver a explicarle el proyecto a cada IA.
+                Lo usaría para retomar una tarea, encontrar una decisión y ver
+                qué hizo otro sin volver a explicarle el proyecto a cada IA.
               </p>
             </div>
             <div className="steps">
@@ -381,21 +409,46 @@ export default function ComoGanarUnHackathon() {
           <h2>Devin con SWE, u OpenCode</h2>
           <p className="intro">
             El agente no adivina: ejecuta lo que la spec define y el cerebro
-            recuerda. Tu rol cambia — de escribir código a definir tareas y
-            verificar entregas.
+            recuerda. Básicamente tu rol cambia — pasás de escribir código a
+            definir tareas concretas y verificar lo que entrega.
           </p>
+          <figure className="figure arena-figure">
+            <div className="stage arena-stage">
+              <ArenaScene
+                fallback={
+                  <div className="arena-fallback">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/fallbacks/devin-mark.svg"
+                      alt="La marca de Devin"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/fallbacks/opencode-mark.svg"
+                      alt="La O del logo de OpenCode"
+                    />
+                  </div>
+                }
+              />
+            </div>
+            <figcaption>
+              DEVIN Y LA «O» DE OPENCODE, EN LA MISMA ARENA — AGARRÁLAS Y
+              TIRÁLAS.
+            </figcaption>
+          </figure>
           <div className="two">
             <div>
               <h3>Devin + modelos SWE</h3>
               <p>
-                Devin puede escribir, ejecutar y probar código. SWE es la
+                Devin puede escribir, ejecutar y probar código solo. SWE es la
                 familia de modelos de Cognition: el agente y el modelo cumplen
                 roles distintos.
               </p>
               <p>
-                Una tarea delimitada, un contrato de entrada/salida, una
-                comprobación concreta. Lo que entrega se revisa como el trabajo
-                de cualquier compañero: antes de integrarlo.
+                Para la hackathon le daría una tarea delimitada, el contrato de
+                entrada/salida y una comprobación concreta. Lo que entrega se
+                revisa igual que el trabajo de cualquier compañero: antes de
+                integrarlo.
               </p>
               <p>
                 <b>Hablá con Erasmo Hernández</b> para consultar demos, acceso o
@@ -414,21 +467,33 @@ export default function ComoGanarUnHackathon() {
                   Erasmo ↗
                 </a>
               </div>
+              <div className="stage otter-stage">
+                <OtterScene
+                  fallback={
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src="/fallbacks/otter.svg"
+                      alt="La nutria, mascota de Devin"
+                    />
+                  }
+                />
+              </div>
             </div>
             <div>
               <h3>OpenCode, controlando el gasto</h3>
               <p>
-                Agente open source para terminal, IDE o escritorio. Permite usar
-                modelos gratuitos disponibles o conectar un proveedor.
+                OpenCode es un agente open source que corre en la terminal, el
+                IDE o el escritorio. Permite usar modelos gratuitos disponibles
+                o conectar un proveedor.
               </p>
               <p>
-                Puede ser una opción barata si elegís bien el modelo y acotás
-                las tareas. El software abierto no elimina el costo de las APIs.
+                Es una opción barata si elegís bien el modelo y acotás las
+                tareas — que el software sea abierto no hace gratis a las APIs.
               </p>
               <p>
-                Modelo barato para cambios simples, modelo capaz cuando el
-                problema lo pide. La métrica que importa: cuánto gastás por
-                tarea terminada.
+                Usaría un modelo barato para cambios simples y uno más capaz
+                cuando el problema lo pide. La métrica que importa: cuánto
+                gastás por tarea terminada.
               </p>
               <div className="link-row">
                 <a href="https://opencode.ai/" target="_blank" rel="noopener">
@@ -443,40 +508,6 @@ export default function ComoGanarUnHackathon() {
                 </a>
               </div>
             </div>
-          </div>
-          <div className="marks">
-            <figure className="figure">
-              <div className="stage">
-                <DevinMark
-                  fallback={
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src="/fallbacks/devin-mark.svg"
-                      alt="La marca de Devin"
-                    />
-                  }
-                />
-              </div>
-              <figcaption>
-                DEVIN, EXTRUIDO EN VIVO. EL RENDER TAMBIÉN SE DELEGÓ.
-              </figcaption>
-            </figure>
-            <figure className="figure">
-              <div className="stage">
-                <OpenCodeMark
-                  fallback={
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src="/fallbacks/opencode-mark.svg"
-                      alt="La O del logo de OpenCode"
-                    />
-                  }
-                />
-              </div>
-              <figcaption>
-                LA «O» DE OPENCODE. ABIERTA, COMO CORRESPONDE.
-              </figcaption>
-            </figure>
           </div>
           <details>
             <summary>Prompt para delegar una tarea</summary>
@@ -495,22 +526,23 @@ export default function ComoGanarUnHackathon() {
               <small>04 / HACER VISIBLE LA IDEA</small>
               <h2>vgpu.sh</h2>
               <p className="intro">
-                Las demos se juzgan con los ojos. vgpu es una biblioteca
-                TypeScript de WebGPU para shaders y gráficos acelerados, con
-                docs y ejemplos pensados también para agentes.
+                vgpu es una biblioteca de TypeScript para hacer gráficos con
+                WebGPU — shaders, efectos y visualizaciones aceleradas por GPU.
+                Viene con documentación y ejemplos pensados también para
+                agentes.
               </p>
               <p>
-                Sirve para construir efectos y visualizaciones en el navegador.
-                También tiene soporte para ejecución en Node y pruebas.
+                Sirve para construir visuales en el navegador, y también corre
+                en Node para hacer pruebas headless.
               </p>
               <blockquote>
                 Si el jurado entiende el producto en diez segundos, los otros
                 cincuenta son tuyos.
               </blockquote>
               <p>
-                Esta página es su propia demo: el cerebro, la marca de Devin y
-                la O de OpenCode están hechos con vgpu y se renderizan en tu
-                navegador, ahora.
+                Esta página es su propia demo: el cerebro de la portada, la
+                nutria de Devin y la O de OpenCode están hechos con vgpu y se
+                renderizan en tu navegador, ahora.
               </p>
               <div className="link-row">
                 <a href="https://vgpu.sh" target="_blank" rel="noopener">
@@ -529,14 +561,15 @@ export default function ComoGanarUnHackathon() {
               <h3>Cómo lo usaría en una hackathon</h3>
               <ol>
                 <li>
-                  Elegiría una visualización que ayude a entender el problema.
+                  Buscaría en los ejemplos algo que ayude a explicar el
+                  problema.
                 </li>
-                <li>Partiría de un ejemplo existente.</li>
+                <li>Partiría de ese ejemplo, no de cero.</li>
                 <li>
                   Le daría al agente la documentación y el objetivo visual.
                 </li>
                 <li>
-                  Probaría en el equipo y navegador de la demo, con una
+                  Lo probaría en la máquina y el navegador de la demo, con una
                   alternativa estática.
                 </li>
               </ol>
@@ -556,8 +589,8 @@ npx vgpu check`}</pre>
           <small>05 / TEMAS QUE SUMARÍA</small>
           <h2>La demo también se construye</h2>
           <p className="intro">
-            El código es la mitad del trabajo. La otra mitad es recorrido,
-            integración y pitch — y también se construye.
+            Básicamente: el código es la mitad del trabajo. La otra mitad es
+            recorrido, integración y pitch — y también se construye.
           </p>
           <div className="extras">
             <article>
@@ -586,6 +619,23 @@ npx vgpu check`}</pre>
             <h3>Nada está listo hasta que se puede mostrar.</h3>
             <p>El agente termina. El equipo verifica. La demo convence.</p>
           </div>
+        </section>
+
+        <section className="chapter" id="setup">
+          <small>06 / PARA EMPEZAR</small>
+          <h2>Un prompt para dejar todo listo</h2>
+          <p className="intro">
+            Básicamente: si arrancás una hackathon mañana, pegá esto en tu
+            agente y tenés el flujo completo — cerebro, spec, plan y visuales.
+          </p>
+          <div className="setup-prompt">
+            <pre>{PROMPT_SETUP}</pre>
+            <CopyPrompt text={PROMPT_SETUP} />
+          </div>
+          <p className="note">
+            Ajustalo al proyecto concreto antes de mandarlo. Un agente con
+            contexto equivocado prepara muy bien el proyecto equivocado.
+          </p>
         </section>
 
         <section className="chapter">
