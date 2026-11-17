@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="data:,">
 <title>CÓMO SER MANIJA CAMBIA VIDAS</title>
 <style>
   :root{color-scheme:dark}
@@ -85,6 +86,23 @@
   }
   #hint b{color:#999}
 
+  /* link directo al beat final — solo en la última slide */
+  #cel-link{
+    position:fixed;left:22px;bottom:16px;z-index:4;opacity:0;pointer-events:none;
+    font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;
+    letter-spacing:.2em;color:#999;text-transform:uppercase;text-decoration:none;
+    border-bottom:1px dashed #555;transition:opacity .5s ease,color .2s;
+  }
+  #cel-link.show{opacity:1;pointer-events:auto}
+  #cel-link:hover{color:#fff;border-bottom-color:#fff}
+
+  /* celebrate — beat final post-QR (z=6, tapa todo) */
+  #celebrate{
+    position:fixed;inset:0;z-index:6;opacity:0;pointer-events:none;
+    transition:opacity .9s ease;background:#050505;
+  }
+  #celebrate.on{opacity:1}
+
   /* gate de inicio — espera Enter/space */
   #gate{
     position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
@@ -103,6 +121,8 @@
 <canvas id="bg"></canvas>
 <canvas id="fx"></canvas>
 <div id="slides"></div>
+<canvas id="celebrate"></canvas>
+<a id="cel-link" href="celebrate.html" target="_blank">celebrate ↗</a>
 <div id="hint"><b>→</b> avanzar · <b>f</b> fullscreen · <b>r</b> restart</div>
 <div id="gate"><span>Enter para empezar</span></div>
 
@@ -110,6 +130,7 @@
 <script src="ocean-v2.js"></script>
 <script src="koi.js"></script>
 <script src="slides.js"></script>
+<script src="celebrate.js"></script>
 <script>
 (() => {
   'use strict';
@@ -118,6 +139,8 @@
   let i = -1;                 // slide actual (-1 = intro)
   let phase = 'boot';         // boot | gate | intro | idle | transition | end
   let busy = false;
+  let celeb = null;           // instancia CELEBRATE (beat final)
+  let celebrating = false;
 
   SLIDES.build(slidesEl);
 
@@ -143,10 +166,24 @@
     });
   }
 
+  const celLink = document.getElementById('cel-link');
+  celLink.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    if (!celebrating) startCelebrate();
+  });
+
+  function startCelebrate() {
+    phase = 'end'; celebrating = true;
+    const cv = document.getElementById('celebrate');
+    cv.classList.add('on');
+    if (window.CELEBRATE) celeb = CELEBRATE.mount(cv, {});
+  }
+
   function goNext() {
     if (phase === 'intro') { KOI.skipIntro(); return; }
+    if (celebrating) { if (celeb) celeb.poke(); return; }
     if (phase !== 'idle' || busy) return;
-    if (i >= N - 1) { phase = 'end'; return; }
+    if (i >= N - 1) { startCelebrate(); return; }
 
     const cur = i, nxt = i + 1;
     phase = 'transition'; busy = true;
@@ -178,6 +215,7 @@
         onDone() {
           SLIDES.hide(cur);
           i = nxt; phase = 'idle'; busy = false;
+          if (i === N - 1) celLink.classList.add('show');   // link celebrate en el cierre
         },
       },
     }, () => { /* done redundante con onDone */ });
