@@ -2,48 +2,195 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>links — juanma</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050505">
+<link rel="icon" href="data:,">
+<title>links — juanma coro</title>
 <style>
   :root{color-scheme:dark}
   *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
   body{
-    background:#050505;color:#fff;min-height:100vh;
-    font-family:ui-monospace,'SF Mono',Menlo,monospace;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    padding:48px 20px;
+    background:#050505;color:#fff;
+    font-family:ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace;
+    min-height:100dvh;display:flex;flex-direction:column;align-items:center;
   }
-  .koi{font-size:42px;letter-spacing:2px;margin-bottom:8px}
-  h1{
-    font-size:clamp(20px,5vw,32px);font-weight:800;letter-spacing:.14em;
-    text-transform:uppercase;margin-bottom:6px;text-align:center;
+  header{padding:38px 20px 0;text-align:center}
+  .koi{font-size:17px;color:#6f6f6f;letter-spacing:.18em}
+  .who{margin-top:12px;font-size:17px;font-weight:700;letter-spacing:.34em;
+       text-transform:uppercase}
+  .tag{margin-top:10px;color:#8a8a8a;font-size:11px;letter-spacing:.16em}
+  nav{
+    width:min(100% - 44px,420px);margin-top:42px;
+    display:flex;flex-direction:column;gap:14px;
   }
-  .tag{color:#888;font-size:13px;margin-bottom:40px;letter-spacing:.08em;text-align:center}
-  ul{list-style:none;width:100%;max-width:420px}
-  li{margin:10px 0}
-  a{
-    display:flex;justify-content:space-between;align-items:baseline;
-    padding:16px 18px;border:1px solid #333;color:#fff;text-decoration:none;
-    font-size:15px;letter-spacing:.06em;transition:all .15s ease;
+  .btn{
+    display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+    padding:21px 18px;border:1.5px solid #fff;color:#fff;text-decoration:none;
+    font-size:15px;letter-spacing:.1em;text-transform:uppercase;
+    -webkit-tap-highlight-color:transparent;
+    transition:background .12s ease,color .12s ease;
   }
-  a:hover{background:#fff;color:#050505;border-color:#fff}
-  a .k{color:#888;font-size:11px;letter-spacing:.14em;text-transform:uppercase}
-  a:hover .k{color:#050505}
-  footer{margin-top:44px;color:#555;font-size:11px;letter-spacing:.1em;text-align:center}
+  .btn .h{font-size:11px;letter-spacing:.06em;color:#8a8a8a;text-transform:none}
+  .btn:hover,.btn:active,.btn:focus-visible{background:#fff;color:#050505;outline:none}
+  .btn:hover .h,.btn:active .h,.btn:focus-visible .h{color:#050505}
+  footer{margin-top:36px;color:#4a4a4a;font-size:10px;letter-spacing:.18em;
+         text-align:center;padding-bottom:20px}
+
+  /* ---------- banda de mar ---------- */
+  #sea{
+    position:fixed;left:0;right:0;bottom:0;
+    height:clamp(210px,34vh,380px);
+    overflow:hidden;pointer-events:none;
+  }
+  #sea canvas{position:absolute;left:0;top:0;display:block}
+  #fx{width:100%;height:100%}
+  @media (max-height:640px){ #sea{height:190px} }
 </style>
 </head>
 <body>
+<header>
   <div class="koi">~(((º&gt;</div>
-  <h1>juanma coro</h1>
+  <h1 class="who">juanma coro</h1>
   <p class="tag">la manija salva carreras y vidas</p>
-  <ul>
-    <li><a href="https://www.linkedin.com/in/j-mcoro/"><span>linkedin</span><span class="k">/in/j-mcoro</span></a></li>
-    <li><a href="https://x.com/Jmcoroo"><span>x / twitter</span><span class="k">@Jmcoroo</span></a></li>
-    <li><a href="https://akadem.app"><span>akadem</span><span class="k">akadem.app</span></a></li>
-    <li><a href="https://www.xbuilderhouse.com"><span>x builder house</span><span class="k">la casa</span></a></li>
-    <li><a href="https://www.buildersofftherecord.com"><span>builders off the record</span><span class="k">el stream</span></a></li>
-    <li><a href="https://silver.dev/early-career"><span>silver.dev</span><span class="k">early career</span></a></li>
-  </ul>
-  <footer>builder house 002 · salta · nov 2026</footer>
+</header>
+<nav>
+  <a class="btn" href="https://www.linkedin.com/in/j-mcoro/"><span>linkedin</span><span class="h">/in/j-mcoro</span></a>
+  <a class="btn" href="https://x.com/Jmcoroo"><span>x / twitter</span><span class="h">@jmcoroo</span></a>
+  <a class="btn" href="https://instagram.com/jmcoroo"><span>instagram</span><span class="h">@jmcoroo</span></a>
+</nav>
+<footer>builder house 002 · salta</footer>
+
+<div id="sea"><canvas id="bg"></canvas><canvas id="fx"></canvas></div>
+
+<script src="../js/pixel-sprite.js"></script>
+<script src="ocean.js"></script>
+<script>
+(() => {
+  'use strict';
+  /* banda inferior: océano ASCII real (ocean.js) + kois pixel nadando.
+   * #bg queda viewport-size adentro de #sea (overflow:hidden); lo desplazamos
+   * para que la línea de agua caiga EDGE px bajo el tope de la banda. */
+  var EDGE = 46;                      // px de "cielo" visible dentro de la banda
+  var sea, bg, fx, fc;
+  var W = 0, H = 0, dpr = 1, horizon = 0;
+  var kois = [], ripples = [];
+
+  function mulberry32(a){return function(){a|=0;a=(a+0x6D2B79F5)|0;var t=Math.imul(a^(a>>>15),1|a);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296;};}
+  var rng = mulberry32(0xC010);
+  var clamp = (v,a,b) => v<a?a:(v>b?b:v);
+
+  function surfY(x){ return OCEAN.surfaceY(clamp(x,0,W)); }
+  function surfLocal(x){ return surfY(x) - horizon + EDGE; }
+
+  function placeBG(){
+    horizon = (surfY(W*0.22) + surfY(W*0.5) + surfY(W*0.78)) / 3;
+    bg.style.top = (EDGE - horizon) + 'px';
+  }
+
+  function fit(){
+    W = sea.clientWidth; H = sea.clientHeight;
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    fx.width  = Math.round(W*dpr);
+    fx.height = Math.round(H*dpr);
+    fc.setTransform(dpr,0,0,dpr,0,0);
+    placeBG();
+  }
+
+  function gentleSplash(x){
+    var p = 0.10 + rng()*0.16;
+    OCEAN.splash(clamp(x,24,W-24), p);
+    ripples.push({x:x, y:surfLocal(x), r:9, vr:150+rng()*80, life:0, ttl:0.7+rng()*0.3});
+  }
+
+  function makeKoi(spr,o){
+    return {
+      spr:spr, x:o.x, dir:o.dir, lane:o.lane||0,
+      speed:o.speed, alpha:(o.alpha==null?1:o.alpha),
+      phase:rng()*6.28, y:0, rot:0,
+      nextSplash:3+rng()*9,
+      update:function(dt,t){
+        this.x += this.dir*this.speed*dt;
+        var m = 48*this.spr.scale + 8;          // media nariz afuera → pega la vuelta
+        if(this.x > W-m && this.dir > 0){ this.dir=-1; if(rng()<0.35) gentleSplash(this.x); }
+        if(this.x <   m && this.dir < 0){ this.dir= 1; if(rng()<0.35) gentleSplash(this.x); }
+        var slope = (surfY(this.x+16)-surfY(this.x-16))/32;
+        this.rot = clamp(Math.atan(slope)*0.55,-0.2,0.2);
+        this.y = surfLocal(this.x) + 10 + this.lane + Math.sin(t*1.8+this.phase)*3;
+        this.spr.update(dt*1000);
+        if(t > this.nextSplash){
+          this.nextSplash = t + 7 + rng()*11;   // splash ocasional leve
+          gentleSplash(this.x);
+        }
+      }
+    };
+  }
+
+  var last = -1;
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(last<0) last=now;
+    var dt = Math.min(0.1,(now-last)/1000); last=now;
+    var t = now/1000;
+    for(var i=0;i<kois.length;i++) kois[i].update(dt,t);
+    for(var j=0;j<ripples.length;j++){
+      var rp=ripples[j]; rp.life+=dt; rp.r+=rp.vr*dt; rp.vr*=0.93;
+    }
+    ripples = ripples.filter(function(r){return r.life<r.ttl;});
+    draw();
+  }
+
+  function draw(){
+    fc.clearRect(0,0,W,H);
+    for(var i=0;i<kois.length;i++){
+      var k=kois[i];
+      fc.save();
+      fc.translate(k.x,k.y);
+      fc.rotate(k.rot);
+      k.spr.draw(fc,0,0,{flip:k.dir>0,alpha:k.alpha});
+      fc.restore();
+    }
+    for(var j=0;j<ripples.length;j++){
+      var rp=ripples[j], kk=1-rp.life/rp.ttl;
+      fc.globalAlpha = 0.5*kk;
+      fc.strokeStyle = '#eeeeee';
+      fc.lineWidth = Math.max(1,1.6*kk);
+      fc.beginPath();
+      fc.ellipse(rp.x,rp.y,rp.r,rp.r*0.3,0,Math.PI,2*Math.PI);
+      fc.stroke();
+    }
+    fc.globalAlpha = 1;
+  }
+
+  function init(){
+    sea = document.getElementById('sea');
+    bg  = document.getElementById('bg');
+    fx  = document.getElementById('fx');
+    if(!window.OCEAN){ if(sea) sea.style.display='none'; return; }
+    fc = fx.getContext('2d');
+    OCEAN.mount(bg);
+    OCEAN.setIntensity(0.3);
+    fit();
+    addEventListener('resize',fit);
+    requestAnimationFrame(frame);
+    if(typeof loadSprite !== 'function') return;
+    Promise.all([
+      loadSprite('../assets/pixel-art/koi-white'),
+      loadSprite('../assets/pixel-art/koi-black')
+    ]).then(function(rs){
+      var scale = clamp(innerWidth/720,0.95,1.25);
+      rs[0].sprite.scale = scale; rs[1].sprite.scale = scale;
+      rs[0].sprite.play('swim'); rs[1].sprite.play('swim');
+      kois = [
+        makeKoi(rs[0].sprite,{x:W*0.30,dir: 1,speed:52,lane:2}),
+        makeKoi(rs[1].sprite,{x:W*0.72,dir:-1,speed:38,lane:30,alpha:0.6})
+      ];
+    }).catch(function(e){ console.warn('kois off:',e); });
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
+  else init();
+})();
+</script>
 </body>
 </html>

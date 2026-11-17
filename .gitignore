@@ -3,6 +3,7 @@
 # dependencies
 /node_modules
 node_modules/
+<<<<<<< HEAD
 /.pnp
 .pnp.*
 .yarn/*
@@ -40,3 +41,4 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+jmcoro-dev/

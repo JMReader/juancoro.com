@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CÓMO SER MANIJA CAMBIA VIDAS</title>
+<style>
+  :root{color-scheme:dark}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#050505}
+  canvas{position:fixed;inset:0;display:block}
+  #bg{z-index:1}
+  #fx{z-index:2;pointer-events:none}
+
+  /* ---------- capa slides (z=3) ---------- */
+  .slides-root{position:fixed;inset:0;z-index:3;pointer-events:none}
+  .slide{
+    position:absolute;inset:0;display:flex;align-items:flex-start;justify-content:center;
+    visibility:hidden;opacity:0;
+  }
+  .slide.is-active{visibility:visible;opacity:1}
+  .slide-inner{
+    width:min(92vw,1400px);margin-top:9vh;text-align:center;
+  }
+
+  .big{
+    font-family:'Arial Black',Impact,'Helvetica Neue',sans-serif;
+    font-weight:900;font-size:clamp(44px,8.5vw,130px);line-height:.98;
+    letter-spacing:.01em;color:#fff;text-transform:uppercase;
+    text-wrap:balance;
+  }
+  .sub{
+    margin-top:2.2vh;
+    font-family:ui-monospace,'SF Mono',Menlo,monospace;
+    font-size:clamp(15px,2.2vw,28px);letter-spacing:.22em;
+    color:#cfcfcf;text-transform:uppercase;
+  }
+
+  /* chars: estados cinéticos */
+  .word{display:inline-block;white-space:nowrap}
+  .ch{display:inline-block;white-space:pre;
+      transition:transform .72s cubic-bezier(.16,.84,.3,1),opacity .6s ease}
+  .ch--space{width:.32em}
+  .slide--sink .sub{font-size:clamp(18px,3vw,36px);color:#fff}
+  .ch--below{transform:translateY(46vh) scaleY(.85);opacity:0}
+  .ch--in{transform:none;opacity:1}
+
+  /* fotos B&W */
+  .photos{
+    margin-top:4.5vh;display:flex;gap:2.2vw;justify-content:center;align-items:center;
+  }
+  .photos img{
+    height:clamp(120px,24vh,240px);width:auto;
+    border:3px solid #fff;filter:grayscale(1) contrast(1.05);
+    background:#fff;
+    transition:transform .6s cubic-bezier(.16,.84,.3,1),opacity .5s ease;
+  }
+  .photos img:nth-child(odd){transform:rotate(-1.6deg)}
+  .photos img:nth-child(even){transform:rotate(1.4deg)}
+  .ph--hide{opacity:0;transform:translateY(14vh) rotate(0deg)!important}
+  .slide--strip .photos img{height:clamp(140px,27vh,270px)}
+
+  /* QR cierre */
+  .qr{margin-top:5vh;transition:opacity .5s ease,transform .6s ease}
+  .qr img{
+    width:clamp(150px,24vh,240px);height:auto;background:#fff;padding:10px;
+    border:3px solid #fff;
+  }
+  .qr figcaption{
+    margin-top:10px;font-family:ui-monospace,'SF Mono',Menlo,monospace;
+    font-size:13px;letter-spacing:.3em;color:#aaa;text-transform:uppercase;
+  }
+  .ph--hide.qr{transform:translateY(10vh)}
+
+  /* hint */
+  #hint{
+    position:fixed;right:22px;bottom:16px;z-index:4;
+    font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:12px;
+    letter-spacing:.2em;color:#555;
+  }
+  #hint b{color:#999}
+
+  /* gate de inicio — espera Enter/space */
+  #gate{
+    position:fixed;inset:0;z-index:5;display:flex;align-items:center;justify-content:center;
+    background:#050505;cursor:pointer;transition:opacity .5s ease;
+  }
+  #gate.gone{opacity:0;pointer-events:none}
+  #gate span{
+    font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:clamp(14px,1.6vw,19px);
+    letter-spacing:.3em;color:#bbb;text-transform:uppercase;
+    animation:pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="fx"></canvas>
+<div id="slides"></div>
+<div id="hint"><b>→</b> avanzar · <b>f</b> fullscreen · <b>r</b> restart</div>
+<div id="gate"><span>Enter para empezar</span></div>
+
+<script src="../js/pixel-sprite.js"></script>
+<script src="ocean-v2.js"></script>
+<script src="koi.js"></script>
+<script src="slides.js"></script>
+<script>
+(() => {
+  'use strict';
+  const slidesEl = document.getElementById('slides');
+  const N = SLIDES.count;
+  let i = -1;                 // slide actual (-1 = intro)
+  let phase = 'boot';         // boot | gate | intro | idle | transition | end
+  let busy = false;
+
+  SLIDES.build(slidesEl);
+
+  const surfMid = () => (window.OCEAN ? OCEAN.surfaceY(innerWidth / 2, OCEAN.time ? OCEAN.time() : undefined) : innerHeight * 0.62);
+
+  function revealSlide(idx, fromX) {
+    SLIDES.show(idx);
+    SLIDES.reveal(idx, fromX);
+    if (window.OCEAN) OCEAN.setIntensity(SLIDES.intensity(idx));
+  }
+
+  function startIntro() {
+    phase = 'intro';
+    SLIDES.show(0);
+    if (!window.KOI) { revealSlide(0); phase = 'idle'; i = 0; return; }
+    KOI.playIntro(() => {
+      if (i === -1) { i = 0; phase = 'idle'; }
+    }, {
+      onEmerge(x) {
+        SLIDES.reveal(0, x);
+        if (window.OCEAN) OCEAN.setIntensity(SLIDES.intensity(0));
+      },
+    });
+  }
+
+  function goNext() {
+    if (phase === 'intro') { KOI.skipIntro(); return; }
+    if (phase !== 'idle' || busy) return;
+    if (i >= N - 1) { phase = 'end'; return; }
+
+    const cur = i, nxt = i + 1;
+    phase = 'transition'; busy = true;
+
+    const curEl = SLIDES.el(cur);
+    const isDouble = SLIDES.isDouble(nxt);
+    const exitMode = SLIDES.exit(cur);
+
+    // slide entrante listo (chars ocultos) antes del hook onEmerge
+    SLIDES.show(nxt);
+    if (window.OCEAN) OCEAN.setIntensity(SLIDES.intensity(nxt));
+
+    let chars = [];
+    if (exitMode === 'carry') {
+      chars = KOI.collectChars(curEl);
+      KOI.hideChars(chars);
+      curEl.querySelectorAll('.photos, .qr').forEach(n => { n.style.opacity = '0'; });
+    } else if (exitMode === 'sink') {
+      // la frase se ahoga sola en el océano — el koi salta igual
+      SLIDES.sink(cur, surfMid());
+    }
+
+    const tIdx = cur;             // índice de transición (0..N-2)
+    KOI.leapTransition(tIdx, {
+      double: isDouble,
+      chars,
+      hooks: {
+        onEmerge(x) { SLIDES.reveal(nxt, x); },
+        onDone() {
+          SLIDES.hide(cur);
+          i = nxt; phase = 'idle'; busy = false;
+        },
+      },
+    }, () => { /* done redundante con onDone */ });
+  }
+
+  /* ---------- gate ---------- */
+  const gateEl = document.getElementById('gate');
+  function begin() {
+    if (phase !== 'gate') return;
+    phase = 'intro';
+    gateEl.classList.add('gone');
+    startIntro();
+  }
+
+  /* ---------- input ---------- */
+  function onKey(e) {
+    if (phase === 'gate') {
+      if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); begin(); }
+      else if (e.key === 'f' || e.key === 'F') {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else document.documentElement.requestFullscreen().catch(() => {});
+      }
+      return;
+    }
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); goNext(); }
+    else if (e.key === 'f' || e.key === 'F') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(() => {});
+    }
+    else if (e.key === 'r' || e.key === 'R') location.reload();
+    else if (e.key === 'l' || e.key === 'L') window.open('links.html', '_blank');
+  }
+  addEventListener('keydown', onKey);
+  gateEl.addEventListener('click', begin);
+  addEventListener('click', () => { if (phase !== 'gate') goNext(); });
+
+  /* ---------- boot ---------- */
+  (async function boot() {
+    try {
+      if (window.KOI) await KOI.init({ canvas: document.getElementById('fx'), assetsBase: '../assets/pixel-art' });
+    } catch (err) {
+      console.warn('KOI init falló — slides sin animación:', err);
+    }
+    if (window.OCEAN) OCEAN.setIntensity(SLIDES.intensity(0));
+    phase = 'gate';           // espera Enter/space/click para arrancar
+  })();
+})();
+</script>
+</body>
+</html>

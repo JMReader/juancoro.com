@@ -1,0 +1,9 @@
+Redraw the attached group photo as a 16-bit pixel art scene, like a frame from a classic adventure game.
+
+CRITICAL — keep the SAME composition as the photo: a big group of about 28 friends posing together outdoors in front of an old stone house covered in green ivy, with a terracotta tiled roof and a vintage street lamp. People are arranged in rows: back row standing, middle rows, front row crouching/sitting on the grass. Tall grass plants and garden in the foreground, trees and cloudy grey sky behind.
+
+Keep EVERY person recognizable as a small pixel sprite: same positions, same poses, same clothing colors as the photo — the light-blue-and-white striped Argentina soccer jersey on the left, the orange poncho crouching in front, denim jacket, black hoodies, beige coat on the right, etc. Same skin tones, hair colors and facial hair as each real person.
+
+Style: chunky visible pixels, flat 2-3 tone shading, crisp hard edges, NO anti-aliasing, NO gradients, limited palette (~24 colors), natural real colors of the scene (green grass and ivy, grey cloudy sky, terracotta roof, stone walls). Each person is a tiny chunky sprite ~40-60 px tall with simple pixel faces.
+
+Output ONE landscape 16:9 scene illustration filling the whole canvas. NOT a sprite sheet, no grid, no cell borders, no panels, no text, no labels, no watermark.

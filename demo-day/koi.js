@@ -199,6 +199,23 @@ window.KOI = (() => {
     }
   }
 
+  /* columna de agua alta (picada teatral): pilares anchos que suben ~1 frame
+     alto de sprite antes de desplomarse */
+  function fxGeyser(x, rng) {
+    const y = surf(x);
+    for (let i = 0; i < 4; i++) {
+      parts.push({
+        kind: 'col', x: x + (rng() - 0.5) * 18, y: y - 2,
+        vx: (rng() - 0.5) * 46, vy: -(420 + rng() * 330),
+        g_: 1500, life: 0, ttl: 0.55 + rng() * 0.25, size: 5 + rng() * 5,
+      });
+    }
+  }
+  /* ripple suelto (segunda onda de la picada) */
+  function fxRipple(x) {
+    ripples.push({ x, y: surf(x), r: 10, vr: 340, life: 0, ttl: 0.9, w: 2.2 });
+  }
+
   function stepFx(dt) {
     for (const p of parts) {
       p.life += dt;
@@ -500,8 +517,11 @@ window.KOI = (() => {
     const xW0 =  W * 1.12, xW1 = W * 0.40;  // white: der → cruza
     const T0 = 0.4, T1 = 3.9, TD = 4.55;
 
-    S.schedule(4.72, () => { fxSplash(xB1, 0.85, rng); });
-    S.schedule(4.80, () => { fxSplash(xW1, 0.85, rng); });
+    S.schedule(4.72, () => { fxSplash(xB1, 1.0, rng); fxGeyser(xB1, rng); });
+    S.schedule(4.80, () => { fxSplash(xW1, 1.0, rng); fxGeyser(xW1, rng); });
+    /* ripple doble: segundo anillo ~0.16s después (la onda que persigue) */
+    S.schedule(4.88, () => { fxRipple(xB1); });
+    S.schedule(4.96, () => { fxRipple(xW1); });
     S.schedule(5.45, () => {
       hooks && hooks.onEmerge && hooks.onEmerge(W * 0.5, surf(W * 0.5));
     });
@@ -530,14 +550,20 @@ window.KOI = (() => {
           k.frame = curFrame(k);
           k.spr.update(dt * 1000);
           k.stretch = 0;
-        } else if (t < TD) {                 // giro a nose-down
+        } else if (t < TD) {                 // antibalanceo → picada
           const p = smooth((t - T1) / (TD - T1));
-          k.x = xb; k.y = surf(xb) + 10 + Math.sin(t * 6) * 1.5;
-          k.frame = p < 0.5 ? F.LEAP_DOWN : F.DIVE;
-          /* heading barre de 0|π a π/2 (nariz abajo, en su sentido de viaje) */
-          k.theta = lerp(k.mirror ? 0 : Math.PI, Math.PI / 2, p);
+          k.x = xb;
+          /* teatro: se hunde un toque, salta leve (mini-breach) y recién
+             ahí rota a nariz-abajo — la picada se "siente" antes de pasar */
+          const dipW = Math.sin(Math.PI * clamp(p / 0.25, 0, 1)) * 10;
+          const hop  = p < 0.25 ? 0
+                     : Math.sin(Math.PI * clamp((p - 0.25) / 0.55, 0, 1)) * 20;
+          k.y = surf(xb) + 10 + dipW - hop;
+          k.frame = p < 0.25 ? F.LEAP_DOWN : p < 0.78 ? F.BREACH : F.DIVE;
+          k.theta = lerp(k.mirror ? 0 : Math.PI, Math.PI / 2,
+                         smooth(clamp((p - 0.62) / 0.38, 0, 1)));
           k.rotOff = 0;
-          k.stretch = -0.12 * p;
+          k.stretch = -0.10 * (dipW / 10) + 0.18 * (hop / 20);
         } else {                             // picado → bajo el agua
           const p = clamp((t - TD) / 0.7, 0, 1);
           k.frame = F.DIVE; k.theta = Math.PI / 2; k.rotOff = 0;
