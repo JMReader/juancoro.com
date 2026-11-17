@@ -64,9 +64,22 @@ window.KOI = (() => {
     swimScale: 2.15,          // px pantalla por px de arte nadando
     leapScaleMin: 1.35,       // × swimScale en salto de apex bajo
     leapScaleMax: 1.8,        // × swimScale en salto de apex 100%
-    flightT: 0.84,            // s de vuelo parabólico
+    flightT: 0.82,            // s de vuelo (arco asimétrico en dos tramos)
     windupT: 0.14,            // s de anticipación (dip + breach)
-    entryT: 0.22,             // s de hundimiento tras el splash
+    entryT: 0.42,             // s de sumersión (plunge → tail-whip → fade)
+    /* arco asimétrico: apex a 46% del TIEMPO (sube rápido, cae largo) y a
+       60% del RECORRIDO (la bajada es empinada hacia el punto de entrada) */
+    apexT: 0.46, apexX: 0.60,
+    riseLinX: 0.38,           // mezcla lineal en x subida → vel residual en apex
+    risePowX: 1.55,
+    fallLinX: 0.45,           // x bajada: easeIn → cae casi vertical al inicio
+    fallPowX: 1.75,
+    risePowY: 1.55,           // y subida: tensa/rápida, redondea al apex
+    fallPowY: 2.05,           // y bajada: hang en la cresta → acelera (gravedad)
+    /* agua: el impacto recorta la velocidad y luego frena por componente
+       (dragX > dragY → el heading rota solo a vertical bajo la superficie) */
+    vInX: 0.55, vInY: 0.50,
+    dragX: 11.0, dragY: 5.5,
     staggerMin: 0.060,        // s — delay min tras el morro (spec 60–90ms)
     staggerMax: 0.092,
     surfaceFallback: 0.72,    // ×H si no hay OCEAN
@@ -128,7 +141,7 @@ window.KOI = (() => {
       name, spr: sprites[name],
       x: 0, y: 0, theta: null, rotOff: 0,
       mirror: false, scale: CFG.swimScale, stretch: 0,
-      frame: 0, alpha: 1, visible: false, swimOn: false,
+      frame: 0, alpha: 1, visible: false, swimOn: false, diveDim: null,
     };
   }
 
@@ -151,6 +164,26 @@ window.KOI = (() => {
     c.imageSmoothingEnabled = false;
     const [sx, sy] = frameRect(k.frame);
     c.drawImage(k.spr.sheet, sx, sy, CFG.frameW, CFG.frameH, -48, -48, 96, 96);
+    c.restore();
+  }
+
+  /* Dibuja el koi CORTADO por la línea de agua: la parte bajo la superficie
+     se atenúa (dim) → la nariz desaparece bajo el agua mientras la cola
+     queda visible un instante sobre la línea (sumersión real, sin arte
+     nuevo: es clip + alpha, no otro sprite). */
+  function drawKoiWater(c, k, dim) {
+    if (!k.visible || k.alpha <= 0) return;
+    const ys = surf(k.x);
+    const half = 52 * k.scale;               // media envergadura del sprite
+    const d = dim != null ? dim : (k.diveDim != null ? k.diveDim : 0.45);
+    if (k.y + half <= ys) { drawKoi(c, k); return; }        // todo arriba
+    const a0 = k.alpha;
+    c.save(); c.beginPath(); c.rect(0, ys, vw, vh - ys); c.clip();
+    k.alpha = a0 * d; drawKoi(c, k); k.alpha = a0;
+    c.restore();
+    if (k.y - half >= ys) return;                           // del todo abajo
+    c.save(); c.beginPath(); c.rect(0, 0, vw, ys); c.clip();
+    drawKoi(c, k);
     c.restore();
   }
 
@@ -182,14 +215,16 @@ window.KOI = (() => {
         size: 2 + rng() * 3,
       });
     }
-    /* columna de agua (solo impactos fuertes): pilar corto que sube y cae */
-    if (power > 0.7) {
-      for (let i = 0; i < 5; i++) {
+    /* columna de agua PROPORCIONAL a la energía de entrada: más power →
+       más pilares, más altos y más veloces (el "spout" que sigue al pez) */
+    if (power > 0.55) {
+      const ncol = Math.round(2 + 6 * power);
+      for (let i = 0; i < ncol; i++) {
         parts.push({
           kind: 'col', x: x + (rng() - 0.5) * 34, y: y - 2,
-          vx: (rng() - 0.5) * 60, vy: -(260 + rng() * 300) * power,
+          vx: (rng() - 0.5) * 60, vy: -(240 + rng() * 340) * (0.4 + 0.8 * power),
           g_: 1250, life: 0, ttl: 0.55 + rng() * 0.3,
-          size: 3 + rng() * 4,
+          size: 3 + rng() * 4 * (0.5 + power),
         });
       }
     }
@@ -211,14 +246,23 @@ window.KOI = (() => {
       });
     }
   }
-  /* ripple suelto (segunda onda de la picada) */
-  function fxRipple(x) {
-    ripples.push({ x, y: surf(x), r: 10, vr: 340, life: 0, ttl: 0.9, w: 2.2 });
+  /* ripple suelto (segunda onda de la picada / gota de letra al agua) */
+  function fxRipple(x, s) {
+    s = s || 1;
+    ripples.push({ x, y: surf(x), r: 10 * s, vr: 340 * s, life: 0, ttl: 0.9, w: 2.2 * s });
   }
 
   function stepFx(dt) {
     for (const p of parts) {
       p.life += dt;
+      if (p.kind === 'b') {               // burbuja: flota, mece, pop en la línea
+        p.vy += p.g_ * dt;                // g_ negativo = empuje hacia arriba
+        p.vy *= Math.exp(-0.9 * dt);      // drag → ascenso con terminal suave
+        p.x += p.vx * dt + Math.sin(p.life * p.sw + p.ph) * p.swA * dt;
+        p.y += p.vy * dt;
+        if (p.y < surf(p.x) + 2) p.life = p.ttl;   // toca superficie → pop
+        continue;
+      }
       p.vy += p.g_ * dt;
       p.x += p.vx * dt; p.y += p.vy * dt;
       if (p.spin) p.rot += p.spin * dt;
@@ -255,6 +299,11 @@ window.KOI = (() => {
         c.fillStyle = '#e8e8e8';
         const hgt = p.size * 2.4;
         c.fillRect((p.x - p.size / 2) | 0, p.y | 0, p.size | 0, hgt | 0);
+      } else if (p.kind === 'b') {
+        /* burbuja pixel: cuadrado hueco que sube meciéndose tras la entrada */
+        c.strokeStyle = '#d8d8d8'; c.lineWidth = 1.5;
+        const bs = p.size | 0;
+        c.strokeRect((p.x - bs) | 0, (p.y - bs) | 0, bs * 2, bs * 2);
       } else {
         c.fillStyle = '#eaeaea';
         c.fillRect(p.x | 0, p.y | 0, p.size | 0, p.size | 0);
@@ -294,16 +343,85 @@ window.KOI = (() => {
     };
   }
 
+  /* ---------------- trayectoria del salto ----------------
+   * Arco ASIMÉTRICO en dos tramos (no parábola simétrica):
+   *   subida (u ∈ [0, UA]):  x e y easeOut → gana altura rápido y tenso,
+   *                          conserva velocidad residual al llegar al apex
+   *   bajada (u ∈ [UA, 1]):  y = w^fallPowY → corona colgada y ACELERA en
+   *                          una caída larga; x easeIn → arranca casi
+   *                          vertical y recupera deriva hacia x1 al final
+   * Apex desplazado a apexX (~60%) del recorrido → la caída cubre menos
+   * horizontal y cae más empinada: "sube más y se clava con arco real".
+   * Devuelve par/vel analíticos + vIn (velocidad de entrada al agua) +
+   * uOfX (inversa numérica de x(u): u ya no es proporcional a x). */
+  function makeArc(x0, x1, ys0, ys1, H, T) {
+    const UA = CFG.apexT, XA = CFG.apexX;
+    const xA = lerp(x0, x1, XA), yA = (ys0 + ys1) / 2 - H;
+    const RX = CFG.riseLinX, RP = CFG.risePowX;
+    const FX = CFG.fallLinX, FP = CFG.fallPowX;
+    const RY = CFG.risePowY, FY = CFG.fallPowY;
+    const exR = v => RX * v + (1 - RX) * (1 - Math.pow(1 - v, RP));
+    const exF = w => FX * w + (1 - FX) * Math.pow(w, FP);
+    const par = u => u <= UA
+      ? { x: lerp(x0, xA, exR(u / UA)),
+          y: lerp(ys0, yA, 1 - Math.pow(1 - u / UA, RY)) }
+      : { x: lerp(xA, x1, exF((u - UA) / (1 - UA))),
+          y: lerp(yA, ys1, Math.pow((u - UA) / (1 - UA), FY)) };
+    const vel = u => {
+      let dx, dy;
+      if (u <= UA) {
+        const v = u / UA;
+        dx = (xA - x0) * (RX + (1 - RX) * RP * Math.pow(1 - v, RP - 1)) / UA;
+        dy = (yA - ys0) * RY * Math.pow(1 - v, RY - 1) / UA;
+      } else {
+        const w = (u - UA) / (1 - UA);
+        dx = (x1 - xA) * (FX + (1 - FX) * FP * Math.pow(w, FP - 1)) / (1 - UA);
+        dy = (ys1 - yA) * FY * Math.pow(w, FY - 1) / (1 - UA);
+      }
+      const vx = dx / T, vy = dy / T, sp = Math.hypot(vx, vy);
+      /* en la cresta sp≈0 → nariz hacia abajo: el pez "corona" y pica */
+      return { vx, vy, sp, th: sp > 1 ? Math.atan2(vy, vx) : Math.PI / 2 };
+    };
+    const sgnx = Math.sign(x1 - x0) || 1;
+    const uOfX = x => {                    // bisección sobre par(u).x (monótona)
+      let lo = 0, hi = 1;
+      for (let i = 0; i < 16; i++) {
+        const m = (lo + hi) / 2;
+        if ((par(m).x - x) * sgnx < 0) lo = m; else hi = m;
+      }
+      return (lo + hi) / 2;
+    };
+    return { x0, x1, xA, yA, ys0, ys1, H, T, par, vel, vIn: vel(1), uOfX };
+  }
+
+  /* Estado de sumersión a τ s de tocar el agua (todo analítico):
+   *   · el impacto recorta la velocidad de entrada (vInX / vInY)
+   *   · el agua frena por componente: dragX > dragY → lo horizontal muere
+   *     antes y el heading rota solo a vertical mientras se hunde (la
+   *     trayectoria subacuática es una curva, no una línea recta) */
+  function subm(P, τ) {
+    const vx0 = P.vIn.vx * CFG.vInX, vy0 = P.vIn.vy * CFG.vInY;
+    const ex = 1 - Math.exp(-CFG.dragX * τ), ey = 1 - Math.exp(-CFG.dragY * τ);
+    const vx = vx0 * Math.exp(-CFG.dragX * τ), vy = vy0 * Math.exp(-CFG.dragY * τ);
+    return {
+      x: P.x1 + vx0 * ex / CFG.dragX,
+      y: P.ys1 - 4 + vy0 * ey / CFG.dragY,
+      vx, vy, th: Math.atan2(vy, vx),
+    };
+  }
+
   /* ---------------- LEAP — la pieza clave ----------------
    * opts: { koi:'black'|'white', dir:'ltr'|'rtl', apex:0..1|0..100,
    *         chars:[{ch,x,y,w,h,font}], hooks:{...}, scaleMul }
-   * Línea de tiempo (~1.4s):
-   *   0.00–0.10  windup: breach desde el agua (frame BREACH, stretch) + splash out
-   *   0.10–0.95  vuelo parabólico, rotación tangente, frames 3→4→5, letras arrastradas
-   *   0.95       splash de entrada (grande) + burst + ripples
-   *   0.95–1.20  hundimiento nose-down con squash y fade
-   *   1.02       hooks.onEmerge(x1) — letras entrantes salen del agua
-   *   ~1.40      fin (done)
+   * Línea de tiempo (~1.5s):
+   *   0.00–0.14  windup: breach desde el agua (frame BREACH, stretch) + splash out
+   *   0.14–0.96  vuelo: arco asimétrico — sube tenso, corona ~46%, baja largo
+   *              y empinado (frames 3→4→5→DIVE anticipando), letras en cinta
+   *   0.96       splash de entrada ∝ velocidad vertical + columna + ripples
+   *   0.96–1.38  sumersión: nose-down, el agua frena (drag exp), cola visible
+   *              sobre la línea con latigazo amortiguado, estela + burbujas
+   *   1.03       hooks.onEmerge(x1) — letras entrantes salen del agua
+   *   ~1.46      fin (done)
    * ------------------------------------------------------------------ */
   function leap(opts, done) {
     /* positional: KOI.leap(dir, apexPct, cb) — spec API mínima */
@@ -318,8 +436,9 @@ window.KOI = (() => {
     const charsIn = (o.chars || []).map((c, i) => ({
       ...c, i,
       cx: c.x + c.w / 2, cy: c.y + c.h / 2,
-      released: false, gone: false,
-      u: 0, ox: 0, oy: 0, rot: 0, alpha: 1, sc: 1,
+      released: false, gone: false, wet: false,
+      u: 0, ox: c.x + c.w / 2, oy: c.y + c.h / 2, vx: 0, vy: 0,
+      rot: 0, alpha: 1, sc: 1,
     }));
 
     const W = vw;
@@ -337,23 +456,20 @@ window.KOI = (() => {
     const ys0 = surf(x0, ocT0), ys1 = surf(x1, ocT0 + TW + T);
     const ysM = surf((x0 + x1) / 2, ocT0);
     const H = ysM * 0.97 * apex;             // altura del arco (apex% → roza el top)
-    const ttl = TW + T + TE + 0.26;            // ~1.46s total
+    const ttl = TW + T + TE + 0.08;            // ~1.46s total
 
     const S = baseScene('leap', () => { k.visible = false; hooks.onDone && hooks.onDone(); done && done(); });
     S.ttl = ttl;
     S.chars = charsIn;                       // debug/testing
     S.koi = k;
 
-    /* trayectoria parabólica (compartida por pez y letras) */
-    const par = u => ({
-      x: lerp(x0, x1, u),
-      y: lerp(ys0, ys1, u) - H * 4 * u * (1 - u),
-    });
-    const vel = u => {
-      const vx = (x1 - x0) / T;
-      const vy = ((ys1 - ys0) - H * 4 * (1 - 2 * u)) / T;
-      return { vx, vy, th: Math.atan2(vy, vx), sp: Math.hypot(vx, vy) };
-    };
+    /* trayectoria asimétrica (compartida por pez y letras) */
+    const P = makeArc(x0, x1, ys0, ys1, H, T);
+    const par = P.par, vel = P.vel;
+
+    /* energía de entrada = velocidad vertical al tocar la superficie →
+       splash, columna de agua y geyser todos escalan con ella */
+    const powIn = clamp(0.30 + P.vIn.vy / 4200, 0.45, 1);
 
     /* eventos */
     S.schedule(TW * 0.5, () => {
@@ -362,17 +478,22 @@ window.KOI = (() => {
     });
     const tLand = TW + T;
     S.schedule(tLand, () => {
-      fxSplash(x1, 0.95, rng);
-      hooks.onSplash && hooks.onSplash(x1, 0.95, 'in');
+      fxSplash(x1, powIn, rng);
+      if (powIn > 0.82) fxGeyser(x1, rng);
+      hooks.onSplash && hooks.onSplash(x1, powIn, 'in');
     });
+    /* estela: dos anillos que persiguen al pez mientras se hunde */
+    S.schedule(tLand + 0.10, () => fxRipple(x1 + sgn * 14, 0.7));
+    S.schedule(tLand + 0.22, () => fxRipple(x1 + sgn * 26, 0.45));
     S.schedule(tLand + 0.07, () => {
       hooks.onEmerge && hooks.onEmerge(x1, ys1);
     });
     S.schedule(ttl, () => S.finish());
 
-    /* release de letras: ~60–90ms tras el paso del morro por su columna */
+    /* release de letras: ~60–90ms tras el paso del morro por su columna
+       (u ya no es ∝ x con el arco asimétrico → inversa numérica uOfX) */
     for (const c of charsIn) {
-      const uHit = clamp((c.cx - x0) / (x1 - x0), 0, 0.93);
+      const uHit = clamp(P.uOfX(c.cx), 0, 0.93);
       c.uRel = uHit;
       const stag = lerp(CFG.staggerMin, CFG.staggerMax, hashI(c.i * 31 + (mirror ? 7 : 3)));
       /* hold: las primeras en soltarse quedan un poco más atrás → la cinta
@@ -401,14 +522,19 @@ window.KOI = (() => {
         k.rotOff = (mirror ? 1 : -1) * (1 - rise) * 18 * DEG;
         k.x = x0; k.y = lerp(ys0 + 44 + dip * 16, ys0 - 8, rise);
         k.stretch = -0.10 * dip + 0.16 * rise;       // squash dip → stretch launch
-        k.alpha = 1;
-      } else if (t < tLand) {                // vuelo
-        const u = (t - TW) / T;
+        k.alpha = 1; k.diveDim = 0.5;                // asoma por la línea de agua
+      } else if (t < tLand) {                // vuelo (arco asimétrico)
+        const u = clamp((t - TW) / T, 0, 1);
         const pos = par(u), v = vel(u);
         k.x = pos.x; k.y = pos.y; k.theta = v.th;
-        k.frame = u < 0.34 ? F.LEAP_UP : u < 0.62 ? F.LEAP_ARC : F.LEAP_DOWN;
+        /* frames: sube UP · corona ARC · baja DOWN · y cuando la caída ya va
+           muy empinada pasa a DIVE → la nariz se planta ANTES de tocar agua */
+        k.frame = u < CFG.apexT - 0.10 ? F.LEAP_UP
+                : u < CFG.apexT + 0.07 ? F.LEAP_ARC
+                : v.th > 60 * DEG ? F.DIVE
+                : F.LEAP_DOWN;
         k.stretch = clamp((v.sp / 1500 - 0.35) * 0.5, -0.05, 0.16);
-        k.alpha = 1;
+        k.alpha = 1; k.diveDim = 0.45;
         /* estela de gotas bajo el pez — espaciada y de vida corta para que
            se lea como gotas sueltas y no como mancha (determinista por step) */
         S._trail = (S._trail || 0) + dt;
@@ -419,14 +545,46 @@ window.KOI = (() => {
                        vy: 80 + hashI((t * 331) | 0) * 110, g_: 950, life: 0,
                        ttl: 0.26, size: 1.6 });
         }
-      } else {                               // entrada + hundimiento
-        const p = clamp((t - tLand) / TE, 0, 1);
-        k.frame = F.DIVE; k.theta = Math.PI / 2; k.rotOff = sgn * 14 * DEG * (1 - p);
-        k.x = x1 + sgn * 14 * p;
-        k.y = ys1 - 8 + easeIn(p) * 120;
-        k.stretch = -0.28 * Math.exp(-p * 6);           // squash al tocar agua
-        k.alpha = p < 0.55 ? 1 : 1 - (p - 0.55) / 0.45;
-        if (t > tLand + TE) k.visible = false;
+      } else {                               /* sumersión */
+        const τ = t - tLand;
+        const s = subm(P, τ);
+        k.frame = F.DIVE; k.theta = s.th;
+        /* cola: latigazo amortiguado al pasar la línea + resto del roll de
+           entrada que se apaga — el último instante visible "ondula" */
+        k.rotOff = Math.sin(τ * 30) * Math.exp(-τ * 8) * 0.16
+                 + sgn * 10 * DEG * Math.exp(-τ * 4.5);
+        k.x = s.x; k.y = s.y;
+        k.stretch = -0.32 * Math.exp(-τ * 10) + 0.05 * Math.exp(-τ * 3);
+        /* alpha por PROFUNDIDAD bajo la línea (no por tiempo): el agua se lo
+           traga gradual + cola de fade temporal para cerrar la escena */
+        const depth = s.y - P.ys1;
+        k.alpha = clamp(1 - smooth(clamp((depth - 80) / 170, 0, 1))
+                        - smooth(clamp((τ - 0.30) / 0.24, 0, 1)), 0, 1);
+        k.diveDim = clamp(0.62 - depth / 420, 0.10, 0.55);
+        if (τ > TE || k.alpha <= 0.01) k.visible = false;
+        /* estela de espuma en el punto de entrada mientras cruza la línea */
+        S._wake = (S._wake || 0) + dt;
+        if (τ < 0.30 && S._wake > 0.045) {
+          S._wake = 0;
+          parts.push({ kind: 'g', g: GLYPHS[(rng() * 4) | 0],
+            x: lerp(P.x1, s.x, 0.4) + (rng() - .5) * 18, y: P.ys1 - 2,
+            vx: (rng() - .5) * 70, vy: -30 - rng() * 90,
+            g_: 500, life: 0, ttl: .35 + rng() * .2, size: 9 + rng() * 8,
+            spin: (rng() - .5) * 4, rot: rng() * 6.28 });
+        }
+        /* burbujas que suben un segundo tras la entrada (ASCII/pixel) */
+        if (τ > 0.10 && τ < 0.60) {
+          S._bub = (S._bub || 0) + dt;
+          if (S._bub > 0.075) {
+            S._bub = 0;
+            parts.push({ kind: 'b',
+              x: s.x + (rng() - .5) * 26,
+              y: Math.max(s.y - 14 - rng() * 26, P.ys1 + 10),
+              vx: (rng() - .5) * 14, vy: -(26 + rng() * 55), g_: -30,
+              life: 0, ttl: .9 + rng() * .5, size: 1.6 + rng() * 2.6,
+              sw: 5 + rng() * 4, ph: rng() * 6.28, swA: 12 + rng() * 10 });
+          }
+        }
       }
 
       /* --- letras arrastradas --- */
@@ -455,8 +613,25 @@ window.KOI = (() => {
           c.ox = px; c.oy = py;
           c.vx = v.vx; c.vy = v.vy;
         } else {
-          /* pasó el borde: balístico — se hunde tras el pez */
-          c.vy += 1900 * dt;
+          /* pasó el borde del arco: balístico en el aire; al tocar el agua
+             frena (mismo drag que el pez) y se hunde despacio tras él — las
+             letras entran al agua, no desaparecen en seco */
+          const uw = c.oy - surf(c.ox);
+          if (uw > 0) {
+            const dr = Math.exp(-4.2 * dt);
+            c.vx *= dr; c.vy = Math.min(c.vy * dr, 110);
+            c.spin *= Math.exp(-2.5 * dt);
+            if (!c.wet) {                        // primer contacto: salpicón chico
+              c.wet = true;
+              if (hashI(c.i * 53 + 17) < 0.4) fxRipple(c.ox, 0.45);
+              parts.push({ kind: 'd', x: c.ox, y: surf(c.ox),
+                vx: (hashI(c.i * 59 + 3) - .5) * 90,
+                vy: -60 - hashI(c.i * 61 + 5) * 120,
+                g_: 900, life: 0, ttl: .3, size: 2 });
+            }
+          } else {
+            c.vy += 1900 * dt;
+          }
           c.ox += (c.vx * 0.55) * dt; c.oy += c.vy * dt;
           c.rot += c.spin * dt;
           px = c.ox; py = c.oy;
@@ -464,28 +639,39 @@ window.KOI = (() => {
         c.px = px; c.py = py;
         c.sc = lerp(1, 0.62, clamp(since / 0.9, 0, 1));
         const under = py - surf(px);
-        c.alpha = under > 4 ? clamp(1 - (under - 4) / 45, 0, 1)
+        c.alpha = under > 4 ? clamp(1 - (under - 4) / 70, 0, 1)
                           : clamp(1.1 - since / 1.0, 0, 1);
         if (c.alpha <= 0 || px < -160 || px > W + 160) c.gone = true;
       }
       if (t >= ttl) S.finish();
     };
 
+    const drawCh = (c2, ch) => {
+      c2.save();
+      c2.translate(ch.px, ch.py);
+      c2.rotate(ch.rot);
+      c2.scale(ch.sc, ch.sc);
+      c2.globalAlpha = clamp(ch.alpha * (ch._dim || 1), 0, 1);
+      c2.font = ch.font || '900 64px sans-serif';
+      c2.fillStyle = '#f5f5f5';
+      c2.textAlign = 'center'; c2.textBaseline = 'middle';
+      c2.fillText(ch.ch, 0, 0);
+      c2.restore();
+    };
+
     S.draw = c => {
       for (const ch of charsIn) {
         if (!ch.released || ch.gone || ch.alpha <= 0) continue;
-        c.save();
-        c.translate(ch.px, ch.py);
-        c.rotate(ch.rot);
-        c.scale(ch.sc, ch.sc);
-        c.globalAlpha = clamp(ch.alpha, 0, 1);
-        c.font = ch.font || '900 64px sans-serif';
-        c.fillStyle = '#f5f5f5';
-        c.textAlign = 'center'; c.textBaseline = 'middle';
-        c.fillText(ch.ch, 0, 0);
-        c.restore();
+        /* corte por la línea de agua: la letra se atenúa bajo la superficie
+           igual que el pez → se hunde con él, no corta en seco */
+        const ysC = surf(ch.px), hh = 42 * ch.sc;
+        if (ch.py + hh <= ysC) { drawCh(c, ch); continue; }    // todo arriba
+        c.save(); c.beginPath(); c.rect(0, ysC, W, vh - ysC); c.clip();
+        ch._dim = 0.32; drawCh(c, ch); ch._dim = 1; c.restore();
+        if (ch.py - hh >= ysC) continue;                       // del todo abajo
+        c.save(); c.beginPath(); c.rect(0, 0, W, ysC); c.clip(); drawCh(c, ch); c.restore();
       }
-      drawKoi(c, k);
+      drawKoiWater(c, k);
     };
 
     S.snapEnd = () => {
@@ -576,7 +762,7 @@ window.KOI = (() => {
       if (t >= ttl) S.finish();
     };
 
-    S.draw = c => { drawKoi(c, kb); drawKoi(c, kw); };
+    S.draw = c => { drawKoiWater(c, kb); drawKoiWater(c, kw); };
     S.snapEnd = () => { kb.visible = kw.visible = false; };
     runScene(S);
     return S;
@@ -656,7 +842,7 @@ window.KOI = (() => {
       const o = opts || {};
       const hooks = o.hooks || {};
       let apex = o.apex == null ? 1 : +o.apex; if (apex > 1.001) apex /= 100;
-      const charsIn = (o.chars || []).map((c, i) => ({ ...c, i, cx: c.x + c.w / 2, cy: c.y + c.h / 2, released: false, gone: false, u: 0, rot: 0, alpha: 1, sc: 1, ox: 0, oy: 0 }));
+      const charsIn = (o.chars || []).map((c, i) => ({ ...c, i, cx: c.x + c.w / 2, cy: c.y + c.h / 2, released: false, gone: false, wet: false, u: 0, rot: 0, alpha: 1, sc: 1, ox: c.x + c.w / 2, oy: c.y + c.h / 2, vx: 0, vy: 0 }));
       const W = vw, rng = mulberry32(CFG.seed ^ 0xF1);
       const kb = makeKoi('black'), kw = makeKoi('white');
       kb.visible = kw.visible = true;
@@ -664,32 +850,32 @@ window.KOI = (() => {
       kb.scale = kw.scale = CFG.swimScale * lerp(CFG.leapScaleMin, CFG.leapScaleMax, apex);
       const T = CFG.flightT, TW = CFG.windupT, TE = CFG.entryT;
       const dl = 0.10;                    // white sale 100ms después → no se pisan
-      const ttl = TW + T + dl + TE + 0.34;
+      const ttl = TW + T + dl + TE + 0.10;
       const ocT0 = oceanT();
       const mk = (mirror, apexF) => {
         const x0 = mirror ? W * 0.08 : W * 0.92, x1 = W - x0;
         const ys0 = surf(x0, ocT0), ys1 = surf(x1, ocT0 + TW + T);
         const H = surf((x0 + x1) / 2, ocT0) * 0.97 * apex * apexF;
-        return {
-          x0, x1, ys0, ys1, H,
-          par: u => ({ x: lerp(x0, x1, u), y: lerp(ys0, ys1, u) - H * 4 * u * (1 - u) }),
-          vel: u => { const vx = (x1 - x0) / T; const vy = ((ys1 - ys0) - H * 4 * (1 - 2 * u)) / T; return { vx, vy, th: Math.atan2(vy, vx), sp: Math.hypot(vx, vy) }; },
-        };
+        return makeArc(x0, x1, ys0, ys1, H, T);
       };
       /* arcos espejados: black alto L→R, white ~84% R→L con delay → se cruzan
          en el centro sin superponerse (lectura taijitu limpia) */
       const A = mk(true, 1), B = mk(false, 0.84);
+      const powA = clamp(0.30 + A.vIn.vy / 4200, 0.45, 1);
+      const powB = clamp(0.30 + B.vIn.vy / 4200, 0.45, 1);
       const S = baseScene('leap2', () => { kb.visible = kw.visible = false; hooks.onDone && hooks.onDone(); done && done(); });
       S.ttl = ttl;
       S.schedule(TW * 0.5, () => { fxSplash(A.x0, .6, rng); });
       S.schedule(TW * 0.5 + dl, () => { fxSplash(B.x0, .6, rng); });
-      S.schedule(TW + T, () => { fxSplash(A.x1, 1, rng); });
-      S.schedule(TW + T + dl, () => { fxSplash(B.x1, 1, rng); });
+      S.schedule(TW + T, () => { fxSplash(A.x1, powA, rng); if (powA > 0.82) fxGeyser(A.x1, rng); });
+      S.schedule(TW + T + dl, () => { fxSplash(B.x1, powB, rng); if (powB > 0.82) fxGeyser(B.x1, rng); });
+      S.schedule(TW + T + 0.10, () => fxRipple(A.x1 + 14, 0.7));
+      S.schedule(TW + T + dl + 0.10, () => fxRipple(B.x1 - 14, 0.7));
       S.schedule(TW + T + dl + 0.07, () => { hooks.onEmerge && hooks.onEmerge(W * 0.5, surf(W * 0.5)); });
       S.schedule(ttl, () => S.finish());
       for (const c of charsIn) {
-        const uA = clamp((c.cx - A.x0) / (A.x1 - A.x0), 0, 0.93);
-        const uB = clamp((c.cx - B.x0) / (B.x1 - B.x0), 0, 0.93);
+        const uA = clamp(A.uOfX(c.cx), 0, 0.93);
+        const uB = clamp(B.uOfX(c.cx), 0, 0.93);
         /* cada koi arrastra las letras de SU mitad (izq→white, der→black):
            dos cintas simétricas que se abren hacia los bordes, no un centro
            cargado */
@@ -717,11 +903,14 @@ window.KOI = (() => {
             k.frame = F.BREACH; k.theta = null;
             k.rotOff = (mirror ? 1 : -1) * (1 - rise) * 18 * DEG;
             k.x = P.x0; k.y = lerp(P.ys0 + 44 + dip * 16, P.ys0 - 8, rise);
-            k.stretch = -.10 * dip + .16 * rise; k.alpha = 1;
+            k.stretch = -.10 * dip + .16 * rise; k.alpha = 1; k.diveDim = 0.5;
           } else if (lt < tLand) {
-            const u = (lt - TW) / T, pos = P.par(u), v = P.vel(u);
+            const u = clamp((lt - TW) / T, 0, 1), pos = P.par(u), v = P.vel(u);
             k.x = pos.x; k.y = pos.y; k.theta = v.th;
-            k.frame = u < .34 ? F.LEAP_UP : u < .62 ? F.LEAP_ARC : F.LEAP_DOWN;
+            k.frame = u < CFG.apexT - .10 ? F.LEAP_UP
+                    : u < CFG.apexT + .07 ? F.LEAP_ARC
+                    : v.th > 60 * DEG ? F.DIVE
+                    : F.LEAP_DOWN;
             k.stretch = clamp((v.sp / 1500 - .35) * .5, -.05, .16); k.alpha = 1;
             /* estela liviana por koi (clave del buffer por actor) */
             const key = mirror ? '_trA' : '_trB';
@@ -733,15 +922,42 @@ window.KOI = (() => {
                            vy: 80 + hashI((t * 331) | 0) * 110, g_: 950, life: 0,
                            ttl: .26, size: 1.6 });
             }
-          } else {
-            const p = clamp((lt - tLand) / TE, 0, 1);
-            k.frame = F.DIVE; k.theta = Math.PI / 2;
-            k.rotOff = (mirror ? 1 : -1) * 14 * DEG * (1 - p);
-            k.x = P.x1 + (mirror ? 1 : -1) * 14 * p;
-            k.y = P.ys1 - 8 + easeIn(p) * 120;
-            k.stretch = -.28 * Math.exp(-p * 6);
-            k.alpha = p < .55 ? 1 : 1 - (p - .55) / .45;
-            if (lt > tLand + TE) k.visible = false;
+          } else {                              /* sumersión (misma física) */
+            const τ = lt - tLand, s = subm(P, τ), sgn = mirror ? 1 : -1;
+            k.frame = F.DIVE; k.theta = s.th;
+            k.rotOff = Math.sin(τ * 30) * Math.exp(-τ * 8) * .16
+                     + sgn * 10 * DEG * Math.exp(-τ * 4.5);
+            k.x = s.x; k.y = s.y;
+            k.stretch = -.32 * Math.exp(-τ * 10) + .05 * Math.exp(-τ * 3);
+            const depth = s.y - P.ys1;
+            k.alpha = clamp(1 - smooth(clamp((depth - 80) / 170, 0, 1))
+                            - smooth(clamp((τ - .30) / .24, 0, 1)), 0, 1);
+            k.diveDim = clamp(.62 - depth / 420, .10, .55);
+            if (τ > TE || k.alpha <= .01) k.visible = false;
+            /* espuma + burbujas por actor (buffers separados) */
+            const wkey = mirror ? '_wkA' : '_wkB';
+            S[wkey] = (S[wkey] || 0) + dt;
+            if (τ < .30 && S[wkey] > .045) {
+              S[wkey] = 0;
+              parts.push({ kind: 'g', g: GLYPHS[(rng() * 4) | 0],
+                x: lerp(P.x1, s.x, .4) + (rng() - .5) * 18, y: P.ys1 - 2,
+                vx: (rng() - .5) * 70, vy: -30 - rng() * 90,
+                g_: 500, life: 0, ttl: .35 + rng() * .2, size: 9 + rng() * 8,
+                spin: (rng() - .5) * 4, rot: rng() * 6.28 });
+            }
+            const bkey = mirror ? '_bbA' : '_bbB';
+            if (τ > .10 && τ < .60) {
+              S[bkey] = (S[bkey] || 0) + dt;
+              if (S[bkey] > .075) {
+                S[bkey] = 0;
+                parts.push({ kind: 'b',
+                  x: s.x + (rng() - .5) * 26,
+                  y: Math.max(s.y - 14 - rng() * 26, P.ys1 + 10),
+                  vx: (rng() - .5) * 14, vy: -(26 + rng() * 55), g_: -30,
+                  life: 0, ttl: .9 + rng() * .5, size: 1.6 + rng() * 2.6,
+                  sw: 5 + rng() * 4, ph: rng() * 6.28, swA: 12 + rng() * 10 });
+              }
+            }
           }
         }
         for (const c of charsIn) {
@@ -761,28 +977,51 @@ window.KOI = (() => {
             c.rot = lerp(c.rot, v.th + c.tumble, .35) + c.spin * dt * (1 - blend * .5);
             c.ox = px; c.oy = py; c.vx = v.vx; c.vy = v.vy;
           } else {
-            c.vy += 1900 * dt;
+            const uw = c.oy - surf(c.ox);
+            if (uw > 0) {                        // ya entró: drag de agua
+              const dr = Math.exp(-4.2 * dt);
+              c.vx *= dr; c.vy = Math.min(c.vy * dr, 110);
+              c.spin *= Math.exp(-2.5 * dt);
+              if (!c.wet) {
+                c.wet = true;
+                if (hashI(c.i * 53 + 17) < .4) fxRipple(c.ox, .45);
+                parts.push({ kind: 'd', x: c.ox, y: surf(c.ox),
+                  vx: (hashI(c.i * 59 + 3) - .5) * 90,
+                  vy: -60 - hashI(c.i * 61 + 5) * 120,
+                  g_: 900, life: 0, ttl: .3, size: 2 });
+              }
+            } else {
+              c.vy += 1900 * dt;
+            }
             c.ox += c.vx * .55 * dt; c.oy += c.vy * dt; c.rot += c.spin * dt;
             px = c.ox; py = c.oy;
           }
           c.px = px; c.py = py;
           c.sc = lerp(1, .62, clamp(since / .9, 0, 1));
           const under = py - surf(px);
-          c.alpha = under > 4 ? clamp(1 - (under - 4) / 45, 0, 1) : clamp(1.1 - since / 1.0, 0, 1);
+          c.alpha = under > 4 ? clamp(1 - (under - 4) / 70, 0, 1) : clamp(1.1 - since / 1.0, 0, 1);
           if (c.alpha <= 0 || px < -160 || px > W + 160) c.gone = true;
         }
         if (t >= ttl) S.finish();
       };
+      const drawCh = (c2, ch) => {
+        c2.save(); c2.translate(ch.px, ch.py); c2.rotate(ch.rot); c2.scale(ch.sc, ch.sc);
+        c2.globalAlpha = clamp(ch.alpha * (ch._dim || 1), 0, 1);
+        c2.font = ch.font || '900 64px sans-serif';
+        c2.fillStyle = '#f5f5f5'; c2.textAlign = 'center'; c2.textBaseline = 'middle';
+        c2.fillText(ch.ch, 0, 0); c2.restore();
+      };
       S.draw = c => {
         for (const ch of charsIn) {
           if (!ch.released || ch.gone || ch.alpha <= 0) continue;
-          c.save(); c.translate(ch.px, ch.py); c.rotate(ch.rot); c.scale(ch.sc, ch.sc);
-          c.globalAlpha = clamp(ch.alpha, 0, 1);
-          c.font = ch.font || '900 64px sans-serif';
-          c.fillStyle = '#f5f5f5'; c.textAlign = 'center'; c.textBaseline = 'middle';
-          c.fillText(ch.ch, 0, 0); c.restore();
+          const ysC = surf(ch.px), hh = 42 * ch.sc;
+          if (ch.py + hh <= ysC) { drawCh(c, ch); continue; }
+          c.save(); c.beginPath(); c.rect(0, ysC, W, vh - ysC); c.clip();
+          ch._dim = .32; drawCh(c, ch); ch._dim = 1; c.restore();
+          if (ch.py - hh >= ysC) continue;
+          c.save(); c.beginPath(); c.rect(0, 0, W, ysC); c.clip(); drawCh(c, ch); c.restore();
         }
-        drawKoi(c, kb); drawKoi(c, kw);
+        drawKoiWater(c, kb); drawKoiWater(c, kw);
       };
       S.snapEnd = () => { for (const c of charsIn) { c.released = true; c.gone = true; } kb.visible = kw.visible = false; };
       runScene(S);
@@ -802,6 +1041,10 @@ window.KOI = (() => {
     advance() { if (scene) scene.finish(); },   // interrumpe limpio
     cancel()  { if (scene) { const s = scene; s.cb = null; s.finish(); } },
     _dbg() { return scene; },                   // debug/testing
+    /* debug/test: pausa el loop rAF y steppea la escena a mano — permite
+       capturar un instante exacto de la animación (screenshots headless) */
+    pause() { running = false; },
+    _step(dt) { tick(dt == null ? STEP : dt); render(); },
     setDirMode(m) { dirMode = m === 'ltr' ? 'ltr' : 'alternate'; },
     setOcean(o) { ocean = o; },
     surfaceY(x, t) { return surf(x, t); },

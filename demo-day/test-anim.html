@@ -166,6 +166,22 @@ function collect(el){
   return chars;
 }
 
+/* volca el canvas #fx a un <img> overlay — en headless los draws hechos
+   fuera de rAF no componen en el screenshot, pero un <img> sí */
+function dumpFx(){
+  let im = document.getElementById('fxdump');
+  if (!im){ im = document.createElement('img'); im.id = 'fxdump';
+    im.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;z-index:8';
+    document.body.appendChild(im); }
+  im.src = document.getElementById('fx').toDataURL();
+}
+function stillSteps(t){
+  if (t == null) return;
+  KOI.pause();
+  for (let s = 0; s < t; s += 1/60) KOI._step(1/60);
+  dumpFx();
+}
+
 function next(){
   if (KOI.state === 'intro') { KOI.skipIntro(); return; }
   if (busy) { KOI.advance(); return; }
@@ -186,6 +202,7 @@ function next(){
       },
     },
   }, ()=>{ busy = false; });
+  stillSteps(window._stillT);                    // still determinista p/ screenshot
 }
 
 function finale(){
@@ -197,6 +214,7 @@ function finale(){
   KOI.leapDouble({ chars, apex: 1,
     hooks:{ onEmerge(x){ if(slide) slide.remove(); cur=(cur+1)%SLIDES.length; showSlide(cur, x);} },
   }, ()=>{ busy=false; });
+  stillSteps(window._stillT);
 }
 
 function restart(){ location.reload(); }
@@ -213,21 +231,26 @@ addEventListener('click', next);
    *   #intro        intro completo (default)
    *   #leap=N       salta intro, muestra slide N y corre transición N
    *   #double       salta intro, corre el cierre doble con el slide de demo
+   *   #dive         salto directo apex 100% black L→R (zambullida nueva)
    *   #end          estado final (último slide quieto, i = APEXS.length)
+   *   sufijo @T     still determinista: pausa el loop y steppea T s de escena
+   *                 (ej: #dive@1.05 → entrada al agua congelada a 1.05 s)
    */
 KOI.init({ canvas: document.getElementById('fx'), ocean: window.OCEAN,
            assetsBase: '../assets/pixel-art' })
   .then(()=>{
     const h = location.hash;
     const idxEl = document.getElementById('idx');
-    const m = h.match(/^#leap=(\d+)$/);
-    if (m) {                                   // #leap=N
+    const stillM = h.match(/@([\d.]+)/);       // sufijo @T → still a T s de escena
+    window._stillT = stillM ? parseFloat(stillM[1]) : null;
+    const m = h.match(/^#leap=(\d+)/);
+    if (m) {                                   // #leap=N  (o #leap=N@T)
       const n = parseInt(m[1], 10);
       cur = n % SLIDES.length; i = n;
       showSlide(cur);
       idxEl.textContent = `#leap=${n} · apex ${KOI.APEXS[Math.min(n,KOI.APEXS.length-1)]}%`;
       setTimeout(next, 420);                   // asienta layout → rects válidos
-    } else if (h === '#double') {              // #double
+    } else if (h.startsWith('#double')) {      // #double (o #double@T)
       cur = 0; i = 0;
       showSlide(cur);
       idxEl.textContent = '#double — cierre taijitu';
@@ -236,12 +259,27 @@ KOI.init({ canvas: document.getElementById('fx'), ocean: window.OCEAN,
       cur = SLIDES.length - 1; i = KOI.APEXS.length;
       showSlide(cur);
       idxEl.textContent = '#end — estado final';
-    } else {                                   // #intro (default)
+    } else if (h.startsWith('#dive')) {        // #dive (o #dive@T) — apex 100%
+      cur = 0; i = 0;
+      showSlide(cur);
+      idxEl.textContent = '#dive — zambullida apex 100% black L→R';
+      setTimeout(() => {
+        busy = true;
+        const slide = slidesEl.querySelector('.slide.on');
+        const chars = slide ? collect(slide) : [];
+        for (const c of chars) c.el.style.visibility = 'hidden';
+        KOI.leap({ koi: 'black', dir: 'ltr', apex: 1, chars,
+          hooks: { onEmerge(x){ if (slide) slide.remove(); showSlide(0, x); } } },
+          () => { busy = false; });
+        stillSteps(window._stillT);
+      }, 420);
+    } else {                                   // #intro (default, o #intro@T)
       idxEl.textContent = 'intro… (click para skip)';
       KOI.playIntro(()=>{
         cur = 0; showSlide(cur, innerWidth/2);
         idxEl.textContent = 'listo — → para saltar';
       }, { onEmerge(x){ /* el título emerge vía showSlide al final del intro */ } });
+      stillSteps(window._stillT);
     }
   })
   .catch(err => { document.getElementById('idx').textContent = 'ERR '+err; console.error(err); });
