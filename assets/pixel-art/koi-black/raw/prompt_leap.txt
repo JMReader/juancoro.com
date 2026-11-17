@@ -1,0 +1,23 @@
+Same SOLID BLACK koi with the white crescent moon mark — identical
+identity, proportions, eye, whisker barbels and flowing fins as the
+swimming sprite attached. Same flat pixel-art look.
+
+Draw it as a jump/dive pose sheet: a strict grid of 5 columns x 1 row,
+equal cells, the fish ALONE in each cell — no water, no splash, no
+waves, no bubbles.
+
+The 5 cells are poses of the SAME fish at the SAME size:
+- cell 1: nose pointing up-left at ~60 degrees, body arched in a C
+  curve, fins and tail flowing back — bursting OUT of the water.
+- cell 2: top of the jump — body arched like an upside-down U, nose
+  tilted just below horizontal, tail still curled up.
+- cell 3: nose pointing down-left at ~60 degrees, body curved the
+  other way — diving back toward the water.
+- cell 4: nose pointing straight DOWN, body fully vertical, slight
+  S-curve, tail held high.
+- cell 5: nose pointing straight UP, body fully vertical, tail low —
+  maximum breach.
+
+Keep the white crescent moon mark, white eye and barbels identical in
+all 5 cells. Solid flat #FF00FF magenta background in every cell,
+fully opaque, no grid lines, no cell borders, no panels, no text.

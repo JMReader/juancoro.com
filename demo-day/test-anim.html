@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>test-anim — koi.js (agente animaciones)</title>
+<style>
+  html,body{margin:0;height:100%;background:#050505;overflow:hidden;
+    font-family:"Arial Narrow","Helvetica Neue",Arial,sans-serif;}
+  canvas{position:fixed;inset:0;display:block}
+  #bg{z-index:1}#fx{z-index:2}
+  #slides{position:fixed;inset:0;z-index:3;pointer-events:none}
+  .slide{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:.35em;opacity:0}
+  .slide.on{opacity:1}
+  .line{display:flex;justify-content:center;white-space:pre}
+  .ch{display:inline-block;font-weight:900;color:#f5f5f5;line-height:.92;
+    font-size:min(11vw,120px);letter-spacing:-.02em;will-change:transform,opacity}
+  .ch.sp{width:.32em}
+  .sub .ch{font-size:min(4vw,42px);font-weight:700;color:#bdbdbd}
+  #hud{position:fixed;left:14px;top:12px;z-index:9;color:#666;
+    font:12px/1.7 ui-monospace,monospace;user-select:none}
+  #hud b{color:#bbb}
+  #badge{position:fixed;right:14px;top:12px;z-index:9;color:#444;
+    font:11px ui-monospace,monospace}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<canvas id="fx"></canvas>
+<div id="slides"></div>
+<div id="hud">
+  <b>test-anim</b> — intro automática · <b>→ / space / click</b> = transición koi-leap
+  · <b>D</b> = doble salto (cierre) · <b>S</b> = skip · <b>R</b> = restart
+  <br><span id="idx"></span>
+</div>
+<div id="badge">OCEAN = MOCK TEST-ONLY</div>
+
+<script src="../js/pixel-sprite.js"></script>
+<script src="koi.js"></script>
+<script>
+/* ============================================================================
+ * MOCK mínimo de window.OCEAN — SOLO PARA ESTE TEST.
+ * El océano real vive en #bg (agente fondo). Acá emulamos el CONTRATO:
+ * surfaceY(x,t) = línea casi plana con oleaje suave; splash = console.log +
+ * un ripple tosco en #bg para ver dónde pega. NO es el fondo final.
+ * ========================================================================== */
+const bg = document.getElementById('bg'), bctx = bg.getContext('2d');
+let BW=0, BH=0, DPR=1;
+function sizeBg(){
+  DPR = Math.min(devicePixelRatio||1, 2.5);
+  BW = innerWidth; BH = innerHeight;
+  bg.width = BW*DPR; bg.height = BH*DPR;
+  bg.style.width = BW+'px'; bg.style.height = BH+'px';
+}
+sizeBg(); addEventListener('resize', sizeBg);
+
+const MOCK = { rings: [] };   // ripples de debug del mock (test-only)
+window.OCEAN = {
+  surfaceY(x, t){                    // MOCK test-only: ola plana suave
+    return BH*0.74 + Math.sin(x*0.008 + (t||0)*0.0009)*5
+                  + Math.sin(x*0.021 - (t||0)*0.0005)*3;
+  },
+  splash(x, power){                  // MOCK test-only
+    console.log('[MOCK OCEAN.splash]', Math.round(x), power.toFixed(2));
+    MOCK.rings.push({x, y:this.surfaceY(x, performance.now()), r:8, p:power});
+  },
+  setIntensity(v){ console.log('[MOCK setIntensity]', v); },   // MOCK
+  freeze(b){ console.log('[MOCK freeze]', b); },               // MOCK
+  time(){ return performance.now()/1000; },                    // MOCK (reloj, s)
+};
+function drawMock(t){                  // línea de agua del mock (test-only)
+  bctx.setTransform(DPR,0,0,DPR,0,0);
+  bctx.clearRect(0,0,BW,BH);
+  /* simula el FILO LUMINOSO del océano real (crestas %/@ brillantes):
+     banda gruesa brillante — peor caso para legibilidad del koi blanco */
+  bctx.beginPath();
+  for(let x=0;x<=BW;x+=6){
+    const y = OCEAN.surfaceY(x, t);
+    x===0 ? bctx.moveTo(x,y) : bctx.lineTo(x,y);
+  }
+  bctx.strokeStyle = '#6e6e6e'; bctx.lineWidth = 9;  bctx.stroke();
+  bctx.strokeStyle = '#d4d4d4'; bctx.lineWidth = 3.5; bctx.stroke();
+  bctx.strokeStyle = '#2c2c2c';
+  for(const r of MOCK.rings){
+    r.r += 4.2*r.p + 1.2;
+    bctx.globalAlpha = Math.max(0, .8 - r.r/240);
+    bctx.beginPath();
+    bctx.ellipse(r.x, r.y, r.r, r.r*.3, 0, 0, Math.PI*2);
+    bctx.stroke();
+  }
+  MOCK.rings = MOCK.rings.filter(r => r.r < 220);
+  bctx.globalAlpha = 1;
+  requestAnimationFrame(drawMock);
+}
+requestAnimationFrame(drawMock);
+
+/* ===================== slides mock (per-char spans) ===================== */
+const SLIDES = [
+  ['CÓMO SER MANIJA','CAMBIA VIDAS'],
+  ['EL QUIETO','NO MUEVE NADA'],
+  ['1200 KM','POR UNA ENTREVISTA'],
+  ['×1000'],
+  ['LA BANDA','NO SE QUEDA QUIETA'],
+  ['LA MANIJA','SALVA CARRERAS','Y VIDAS'],
+];
+const slidesEl = document.getElementById('slides');
+let cur = -1, i = 0, busy = false, curChars = [];
+
+function buildSlide(lines){
+  const d = document.createElement('div'); d.className='slide';
+  for(const [li,txt] of lines.entries()){
+    const l = document.createElement('div');
+    l.className = 'line' + (li===lines.length-1&&lines.length>2?' sub':'');
+    for(const ch of txt){
+      const s = document.createElement('span');
+      s.className = 'ch' + (ch===' '?' sp':'');
+      s.dataset.ch = ch; s.textContent = ch;
+      l.appendChild(s);
+    }
+    d.appendChild(l);
+  }
+  return d;
+}
+
+/* chars entrantes: emergen del agua donde cayó el pez (stagger por distancia) */
+function emergeChars(el, xOrigin){
+  const surfY = KOI.surfaceY(innerWidth/2);
+  const chars = [...el.querySelectorAll('.ch')];
+  for(const c of chars){
+    const r = c.getBoundingClientRect();
+    const dx = Math.abs(r.left + r.width/2 - xOrigin);
+    const delay = dx/innerWidth * 380;                 // más lejos del pez → más tarde
+    c.style.transition = 'none';
+    c.style.transform = `translateY(${surfY - r.top + 40}px) scaleY(.6)`;
+    c.style.opacity = '0';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      c.style.transition = `transform .7s cubic-bezier(.16,1,.3,1) ${delay}ms, opacity .45s linear ${delay}ms`;
+      c.style.transform = 'translateY(0) scaleY(1)';
+      c.style.opacity = '1';
+    }));
+  }
+}
+
+function showSlide(idx, emergeX){
+  const old = slidesEl.querySelector('.slide.on');
+  if (old) old.remove();
+  const el = buildSlide(SLIDES[idx % SLIDES.length]);
+  slidesEl.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add('on'));
+  const chars = [...el.querySelectorAll('.ch')];
+  if (emergeX != null) emergeChars(el, emergeX);
+  else for(const c of chars){ c.style.opacity='0'; requestAnimationFrame(()=>requestAnimationFrame(()=>{c.style.transition='opacity .3s';c.style.opacity='1';})); }
+  return el;
+}
+
+function collect(el){
+  const chars = [];
+  el.querySelectorAll('.ch').forEach(n=>{
+    if (n.dataset.ch === ' ') return;      // espacios no viajan
+    const r = n.getBoundingClientRect();
+    const cs = getComputedStyle(n);
+    chars.push({ch:n.dataset.ch, x:r.left, y:r.top, w:r.width, h:r.height,
+      font:`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`, el:n});
+  });
+  return chars;
+}
+
+function next(){
+  if (KOI.state === 'intro') { KOI.skipIntro(); return; }
+  if (busy) { KOI.advance(); return; }
+  busy = true;
+  const slide = slidesEl.querySelector('.slide.on');
+  const chars = slide ? collect(slide) : [];
+  for(const c of chars) c.el.style.visibility='hidden';
+  const idx = i++;
+  document.getElementById('idx').textContent =
+    `transición ${idx} · apex ${KOI.APEXS[Math.min(idx,KOI.APEXS.length-1)]}% · ${idx%2?'white R→L':'black L→R'}`;
+  KOI.leapTransition(idx, {
+    chars,
+    hooks: {
+      onEmerge(x, surfY){
+        if (slide) slide.remove();
+        cur = (cur+1) % SLIDES.length;
+        showSlide(cur, x);
+      },
+    },
+  }, ()=>{ busy = false; });
+}
+
+function finale(){
+  if (busy) { KOI.advance(); return; }
+  busy = true;
+  const slide = slidesEl.querySelector('.slide.on');
+  const chars = slide ? collect(slide) : [];
+  for(const c of chars) c.el.style.visibility='hidden';
+  KOI.leapDouble({ chars, apex: 1,
+    hooks:{ onEmerge(x){ if(slide) slide.remove(); cur=(cur+1)%SLIDES.length; showSlide(cur, x);} },
+  }, ()=>{ busy=false; });
+}
+
+function restart(){ location.reload(); }
+
+addEventListener('keydown', e=>{
+  if (e.key==='ArrowRight'||e.key===' '||e.key==='Enter') next();
+  else if (e.key==='d'||e.key==='D') finale();
+  else if (e.key==='s'||e.key==='S') KOI.advance();
+  else if (e.key==='r'||e.key==='R') restart();
+});
+addEventListener('click', next);
+
+/* go — hash triggers para review determinista:
+   *   #intro        intro completo (default)
+   *   #leap=N       salta intro, muestra slide N y corre transición N
+   *   #double       salta intro, corre el cierre doble con el slide de demo
+   *   #end          estado final (último slide quieto, i = APEXS.length)
+   */
+KOI.init({ canvas: document.getElementById('fx'), ocean: window.OCEAN,
+           assetsBase: '../assets/pixel-art' })
+  .then(()=>{
+    const h = location.hash;
+    const idxEl = document.getElementById('idx');
+    const m = h.match(/^#leap=(\d+)$/);
+    if (m) {                                   // #leap=N
+      const n = parseInt(m[1], 10);
+      cur = n % SLIDES.length; i = n;
+      showSlide(cur);
+      idxEl.textContent = `#leap=${n} · apex ${KOI.APEXS[Math.min(n,KOI.APEXS.length-1)]}%`;
+      setTimeout(next, 420);                   // asienta layout → rects válidos
+    } else if (h === '#double') {              // #double
+      cur = 0; i = 0;
+      showSlide(cur);
+      idxEl.textContent = '#double — cierre taijitu';
+      setTimeout(finale, 420);
+    } else if (h === '#end') {                 // #end
+      cur = SLIDES.length - 1; i = KOI.APEXS.length;
+      showSlide(cur);
+      idxEl.textContent = '#end — estado final';
+    } else {                                   // #intro (default)
+      idxEl.textContent = 'intro… (click para skip)';
+      KOI.playIntro(()=>{
+        cur = 0; showSlide(cur, innerWidth/2);
+        idxEl.textContent = 'listo — → para saltar';
+      }, { onEmerge(x){ /* el título emerge vía showSlide al final del intro */ } });
+    }
+  })
+  .catch(err => { document.getElementById('idx').textContent = 'ERR '+err; console.error(err); });
+</script>
+</body>
+</html>

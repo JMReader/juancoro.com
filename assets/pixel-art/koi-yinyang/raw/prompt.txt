@@ -1,0 +1,28 @@
+16-bit pixel art style, chunky visible pixels, flat 2-3 tone shading,
+crisp hard edges, NO anti-aliasing, NO gradients, NO soft shadows,
+bold 1px dark outline around the subject, limited palette, no text, no labels.
+
+Redraw the attached tattoo as ONE single pixel art sprite: two koi fish
+arranged in a circular yin-yang composition, swimming head-to-tail forming
+a round medallion. Study the attached reference carefully and keep its
+details.
+
+Fish 1: a SOLID BLACK koi — smooth silhouette, curved body, flowing forked
+tail fin, small white eye dot.
+Fish 2: a WHITE koi with black line detail — visible scale pattern on the
+body, whisker barbels at the mouth, flowing pectoral and tail fins —
+curved the opposite way so its head meets the black fish's tail.
+
+IMPORTANT — the head symbols from the tattoo: one fish carries a small
+SUN mark and the other carries a small CRESCENT MOON mark on/near the
+head, exactly as placed in the reference. Keep both symbols visible.
+
+The two fish together form a near-perfect circle like the classic
+yin-yang koi tattoo. Bodies curve along the circle, heads opposite to
+each other's tails.
+
+Palette: pure black #000000, white #FFFFFF, single mid gray #777777 only
+for scale shading on the white fish.
+Background: solid flat #FF00FF magenta, fully opaque, no circle frame,
+no water, no waves, no decoration around the medallion.
+Single centered sprite filling most of the frame.

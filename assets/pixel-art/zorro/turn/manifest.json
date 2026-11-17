@@ -1,0 +1,13 @@
+{
+  "name": "sprite",
+  "cols": 4,
+  "rows": 1,
+  "frames": 4,
+  "frame_w": 96,
+  "frame_h": 96,
+  "anchor": "bottom",
+  "fps_default": 8,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/assets/pixel-art/zorro/raw/turn_raw.png",
+  "sheet": "sheet.png"
+}

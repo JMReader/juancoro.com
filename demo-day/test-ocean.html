@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>test — océano ASCII (agente fondo)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #050505; overflow: hidden; }
+  #bg { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #hud {
+    position: fixed; left: 12px; top: 10px; z-index: 10;
+    color: #bdbdbd; font: 12px/1.5 ui-monospace, "SF Mono", Menlo, monospace;
+    text-shadow: 0 1px 0 #000, 0 0 4px #000; white-space: pre;
+    user-select: none; pointer-events: none;
+  }
+  #hud b { color: #fff; }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="hud"></div>
+<script src="ocean.js"></script>
+<script>
+(function () {
+  'use strict';
+  var hud = document.getElementById('hud');
+  var hudOn = true;
+
+  // ---- FPS (EMA) para verificar 60fps
+  var ema = 60, last = performance.now();
+  function tick(now) {
+    ema += (1000 / Math.max(1, now - last) - ema) * 0.05;
+    last = now;
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  // ---- intensidad pedida por el usuario (para mostrar target en HUD)
+  var want = 0.45;
+  function setI(v) { want = Math.max(0, Math.min(1, v)); OCEAN.setIntensity(want); }
+
+  // ---- interacción de prueba
+  addEventListener('mousedown', function (e) {
+    if (!window.OCEAN) return;
+    OCEAN.splash(e.clientX, e.shiftKey ? 0.35 : 1.0);
+  });
+  addEventListener('keydown', function (e) {
+    if (!window.OCEAN) return;
+    var k = e.key;
+    if (k === '?') { hudOn = !hudOn; hud.style.display = hudOn ? '' : 'none'; }
+    else if (k === 'f' || k === 'F') OCEAN.freeze();
+    else if (k === 'm' || k === 'M') setI(1);
+    else if (k === 's' || k === 'S') OCEAN.splash(Math.random() * innerWidth, 0.4 + Math.random() * 0.6);
+    else if (k === '[') setI(want - 0.1);
+    else if (k === ']') setI(want + 0.1);
+    else if (k >= '0' && k <= '9') setI((+k) / 9);
+  });
+
+  // ---- config por URL hash: #calm #mid #max|#storm #splash
+  function applyHash() {
+    if (!window.OCEAN) return;
+    var h = location.hash.toLowerCase();
+    if (h.indexOf('calm') >= 0) setI(0.15);
+    else if (h.indexOf('storm') >= 0 || h.indexOf('max') >= 0) setI(1.0);
+    else if (h.indexOf('mid') >= 0) setI(0.45);
+    if (h.indexOf('splash') >= 0 && !applyHash._iv) {
+      var shots = [0.25, 0.5, 0.75], n = 0;
+      applyHash._iv = setInterval(function () {
+        OCEAN.splash(innerWidth * shots[n % 3], 1.0);
+        if (++n > 8) clearInterval(applyHash._iv);
+      }, 1400);
+    }
+  }
+  addEventListener('hashchange', applyHash);
+  // aplicar tras el boot de ocean.js (por si el hash llegó antes del mount)
+  setTimeout(applyHash, 0);
+
+  // ---- HUD
+  setInterval(function () {
+    if (!hudOn || !window.OCEAN) return;
+    var s = 'océano ASCII — test\n'
+      + 'fps   ' + ema.toFixed(0) + '\n'
+      + 'int   ' + OCEAN.getIntensity().toFixed(2) + ' → target ' + want.toFixed(2) + '\n'
+      + 'surfY ' + OCEAN.surfaceY(innerWidth / 2).toFixed(1) + ' @x=' + (innerWidth / 2 | 0) + '\n'
+      + '—\n'
+      + 'click   splash (shift = suave)\n'
+      + '0-9 [ ] intensidad · m max · s rnd\n'
+      + 'f       freeze · ? hud';
+    if (hud.textContent !== s) hud.textContent = s;
+  }, 200);
+})();
+</script>
+</body>
+</html>

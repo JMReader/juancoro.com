@@ -1,0 +1,17 @@
+16-bit pixel art style, chunky visible pixels, flat 2-3 tone shading, crisp hard edges, NO anti-aliasing, NO gradients, NO soft shadows, bold 1px dark outline, limited palette, no text, no labels.
+
+The attached image is the approved sprite sheet of a fox samurai (orange fox, cream chest, red scarf, katana, side view facing right, 16-bit pixel art). Draw THE SAME character, THE SAME style, palette and pixel size.
+
+New animation sheet: JUMP — 8 distinct frames in a strict 4 columns x 2 rows grid, equal cells, left to right then top to bottom. DRAMATICALLY different silhouettes per frame — this must read as a jump arc, not idle fidgets.
+
+Frame order (each pose clearly distinct):
+1. Deep crouch: body squashed flat, haunches coiled, about to spring.
+2. Explosive launch: body stretched VERTICALLY TALL and thin, legs kicked back, scarf whipping up.
+3. Rising tuck: knees pulled up to chest, body compact ball mid-air.
+4. Full stretch at apex: body elongated horizontal-ish, arms and legs spread wide, maximum air pose.
+5. Beginning to fall: body rotates slightly nose-down, legs extending toward ground.
+6. Fast fall: body stretched vertically again, legs reaching, scarf streaming down.
+7. Landing anticipation: body compressed again, knees bent deep, dust implied by low stance.
+8. Recover: returning to neutral stand, slight squash settling.
+
+Background: solid flat #FF00FF magenta in every cell, fully opaque, no grid lines, no cell borders, no panels, no ground, no shadows, no text. Stepped motion only.

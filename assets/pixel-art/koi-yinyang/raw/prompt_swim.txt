@@ -1,0 +1,22 @@
+Keep the exact same pixel art style, palette and identity of the two koi
+from the medallion we just made (black solid koi with crescent moon mark,
+white koi with sun mark, scale detail and whisker barbels).
+
+Now draw them as SEPARATE swimming sprites in a strict grid of
+3 columns x 2 rows, equal cells, side view, every fish facing LEFT, body
+fully extended horizontally (NOT curved into a circle).
+
+Row 1 (all 3 cells): the SOLID BLACK koi only.
+Row 2 (all 3 cells): the WHITE koi with black line detail only.
+
+The 3 cells of each row are a swim wiggle loop — only the body/tail curve
+changes; head position, eye, marks and size stay identical:
+- frame 1: body arcs upward, tail fin swept down.
+- frame 2: body straight, neutral glide.
+- frame 3: body arcs downward, tail fin swept up.
+Head at the same spot in all 3 frames of a row. Keep the sun mark on the
+white koi and the crescent moon mark on the black koi. Same size in all
+6 cells.
+
+Background: solid flat #FF00FF magenta in every cell, fully opaque,
+no grid lines, no cell borders, no panels, no text.

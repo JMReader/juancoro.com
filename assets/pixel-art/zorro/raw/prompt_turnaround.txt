@@ -1,0 +1,13 @@
+16-bit pixel art style, chunky visible pixels, flat 2-3 tone shading, crisp hard edges, NO anti-aliasing, NO gradients, NO soft shadows, bold 1px dark outline, limited palette, no text, no labels.
+
+The attached image is the approved sprite of a fox samurai (orange fox, cream-white chest and muzzle, black ear tips, red scarf, brown belt, katana at hip, 16-bit pixel art). Draw THE SAME character with THE SAME proportions, palette and pixel size.
+
+Character TURNAROUND sheet for 3D reconstruction: the same fox samurai in 4 orthographic views, STRICT grid of 4 columns x 1 row, equal cells, left to right:
+1. FRONT view: facing the camera, symmetric, arms slightly out, katana visible at left hip.
+2. BACK view: facing away, tail and red scarf knot visible, katana hilt over shoulder line.
+3. SIDE view: perfect profile facing LEFT, full body.
+4. TOP view: looking straight down from above — only head top, ears, shoulders, tail tip visible (no legs).
+
+CONSISTENCY IS CRITICAL: same height, same head size, same colors, same outline width in all 4 views. All views aligned on the same ground baseline. The fox must be centered in each cell with margin on all sides.
+
+Background: solid flat #FF00FF magenta in every cell, fully opaque, no grid lines, no cell borders, no panels, no ground, no shadows, no text.

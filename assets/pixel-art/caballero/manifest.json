@@ -1,0 +1,41 @@
+{
+  "name": "caballero",
+  "cols": 4,
+  "rows": 2,
+  "frames": 8,
+  "frame_w": 32,
+  "frame_h": 32,
+  "anchor": "bottom",
+  "fps_default": 8,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/assets/pixel-art/caballero/raw/sheet_raw.png",
+  "sheet": "sheet.png",
+  "animations": {
+    "walk": {
+      "frames": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "durations": [
+        140,
+        120,
+        140,
+        120
+      ],
+      "loop": "loop"
+    },
+    "idle": {
+      "frames": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "fps": 2,
+      "loop": "loop"
+    }
+  },
+  "scale": 5
+}

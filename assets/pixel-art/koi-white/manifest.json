@@ -1,0 +1,64 @@
+{
+  "name": "koi",
+  "cols": 4,
+  "rows": 2,
+  "frames": 8,
+  "frame_w": 96,
+  "frame_h": 96,
+  "anchor": "center",
+  "fps_default": 6,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/assets/pixel-art/koi-white/raw/swim_white_clean.png + leap5.png",
+  "sheet": "sheet.png",
+  "animations": {
+    "swim": {
+      "frames": [
+        0,
+        1,
+        2
+      ],
+      "loop": "pingpong",
+      "durations": [
+        140,
+        180,
+        140
+      ]
+    },
+    "leap": {
+      "frames": [
+        3,
+        4,
+        5
+      ],
+      "loop": "once",
+      "durations": [
+        180,
+        160,
+        200
+      ]
+    },
+    "dive": {
+      "frames": [
+        6
+      ],
+      "loop": "once"
+    },
+    "breach": {
+      "frames": [
+        7
+      ],
+      "loop": "once"
+    }
+  },
+  "pose_angles": {
+    "comment": "angulo (deg, y-down) de la nariz en el arte local; swim=180",
+    "0": 180,
+    "1": 180,
+    "2": 180,
+    "3": 230,
+    "4": 200,
+    "5": 122,
+    "6": 90,
+    "7": 270
+  }
+}

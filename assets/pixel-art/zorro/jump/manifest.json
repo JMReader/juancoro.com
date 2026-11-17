@@ -1,0 +1,13 @@
+{
+  "name": "sprite",
+  "cols": 4,
+  "rows": 2,
+  "frames": 8,
+  "frame_w": 32,
+  "frame_h": 32,
+  "anchor": "bottom",
+  "fps_default": 8,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/assets/pixel-art/zorro/raw/jump_raw2.png",
+  "sheet": "sheet.png"
+}

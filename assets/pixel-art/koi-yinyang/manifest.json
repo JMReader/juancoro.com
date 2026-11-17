@@ -1,0 +1,13 @@
+{
+  "name": "koi",
+  "cols": 1,
+  "rows": 1,
+  "frames": 1,
+  "frame_w": 64,
+  "frame_h": 64,
+  "anchor": "bottom",
+  "fps_default": 8,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/assets/pixel-art/koi-yinyang/raw/koi2_clean.png",
+  "sheet": "sheet.png"
+}
