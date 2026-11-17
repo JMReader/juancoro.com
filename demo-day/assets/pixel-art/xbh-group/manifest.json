@@ -1,0 +1,13 @@
+{
+  "name": "xbh-group",
+  "cols": 1,
+  "rows": 1,
+  "frames": 1,
+  "frame_w": 432,
+  "frame_h": 243,
+  "anchor": "center",
+  "fps_default": 8,
+  "durations_ms": null,
+  "source": "/Users/korita/orca/projects/Personal-proyect/demo-day/assets/pixel-art/xbh-group/raw/gen-1.png",
+  "sheet": "sheet.png"
+}

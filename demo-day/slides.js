@@ -48,10 +48,10 @@ window.SLIDES = (() => {
     {
       id: 'movimiento',
       big: '1200 KM — SIN ENTRADA',
-      sub: '6–7 BA · TERRIA ★ · asado · CONTRATAR + PRESTAR',
+      sub: '6–7 BA · TERRIA HACK CBA · HACKATWIN · HACKATÓN ANTHROPIC',
       photos: [
         'win-hackcba-1.jpg', 'movimiento-2.jpg', 'artu-grokbot-futbol-2.jpg',
-        'paisanos-legend.jpg', 'li-hackatwin.jpg',
+        'paisanos-legend.jpg', 'vid-hackatwin-eve.jpg',
       ],
       strip: true,
     },
@@ -67,6 +67,7 @@ window.SLIDES = (() => {
       big: 'SI DUDABAN, HÁGANLO AHORA',
       sub: 'LA MANIJA SALVA CARRERAS Y VIDAS',
       photos: [],
+      photos: ['x1000-1.jpg', 'x1000-2.jpg', 'x1000-3.jpg', 'x1000-4.jpg'],
       qr: 'assets/qr-links.png',
       qrLabel: 'links',
       double: true,          // entra con los dos kois (taijitu)

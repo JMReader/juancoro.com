@@ -52,8 +52,8 @@
   var MAX_PART   = 448;           // +spill de rompedores
   var GRAV       = 560;
 
-  var NW         = 10;            // armónicos del espectro
-  var MAX_PK     = 9;             // paquetes de olas simultáneos
+  var NW         = 7;             // armónicos del espectro (graves dominan)
+  var MAX_PK     = 12;            // paquetes de olas simultáneos (sets)
   var MAX_GUST   = 3;             // ráfagas simultáneas
   var FOAM_DECAY = 0.9935;        // por step → estela ~3-5 s
   var FOAM_DIFF  = 0.16;          // difusión horizontal por step
@@ -97,12 +97,12 @@
     var rng = mulberry32((SEED ^ 0x5EED) | 0);
     var a = [];
     for (var i = 0; i < NW; i++) {
-      var P  = 1.45 + i * 0.30 + rng() * 0.55;    // período en unid. ph
+      var P  = 1.9 + i * 0.42 + rng() * 0.6;      // períodos más largos
       var kl = 6.28318 / P;
-      var lx = 260 + rng() * 2100;                 // λ lateral (px)
-      var kx = 6.28318 / lx * (rng() < 0.68 ? 1 : -1) * WIND_DIR;
+      var lx = 380 + rng() * 2600;                 // crestas más largas
+      var kx = 6.28318 / lx * (rng() < 0.72 ? 1 : -1) * WIND_DIR;
       var om = 1.85 * Math.sqrt(kl);               // ω ∝ √k (dispersión)
-      var am = 0.62 / (1 + i * i * 0.16) * (0.55 + 0.45 * rng());
+      var am = 0.55 / (1 + i * i * 0.30) * (0.55 + 0.45 * rng()); // graves mandan
       a.push({ kx: kx, kl: kl, w: om, a: am, ph: rng() * 6.28318 });
     }
     return a;
@@ -131,28 +131,45 @@
     packets.push({ on: false, x0: 0, w: 1, ph: 0, vph: 0, vx: 0,
                    amp: 0, age: 0, dur: 0, brkPh: 0, brk: 0, r: null });
   }
-  var pkSpawnN = 0, pkNext = 1.2;   // primer paquete ~1 s
+  var setSpawnN = 0, setNext = 1.0;   // primer set ~1 s
 
-  function spawnPacket() {
-    var rng = mulberry32((SEED ^ Math.imul(pkSpawnN + 101, 0x85EBCA77)) | 0);
-    pkSpawnN++;
+  function spawnPacket(o) {   // o: params ya decididos por el set
     for (var i = 0; i < MAX_PK; i++) {
       var p = packets[i];
       if (p.on) continue;
       p.on = true;
-      p.x0 = 0.08 * W + rng() * 0.84 * W;
-      p.w = 130 + rng() * 360;
-      p.ph = 0.30 + rng() * 0.45;
-      p.vph = 0.55 + rng() * 0.50;
-      p.vx = (rng() - 0.5) * 34;                  // deriva lateral
-      p.amp = 0.55 + rng() * 0.45;
-      p.age = 0;
-      p.dur = 13 + rng() * 5;
-      p.brkPh = 2.0 + rng() * 3.4;
-      p.brk = 0;
-      p.r = rng;                                   // rng propio (determinista)
+      p.x0 = o.x0; p.w = o.w; p.ph = o.ph; p.vph = o.vph; p.vx = o.vx;
+      p.amp = o.amp; p.age = 0; p.dur = o.dur;
+      p.brkPh = o.brkPh; p.brk = 0;
+      p.r = o.r;                                   // rng propio (determinista)
       return;
     }
+  }
+  // SET de olas: 2-4 en tren con Δph regular y misma deriva →
+  // el ojo sigue "el set" viajando en diagonal; entre sets, calma.
+  function spawnSet() {
+    var rs = mulberry32((SEED ^ Math.imul(setSpawnN + 53, 0x27D4EB2F)) | 0);
+    setSpawnN++;
+    var nSet = 2 + (rs() * 3 | 0);               // 2..4 olas
+    var dph = 1.25 + rs() * 0.55;                // separación del tren (unid. ph)
+    var bx = 0.05 * W + rs() * 0.9 * W;
+    var vxS = (rs() - 0.5) * 46;                 // deriva del set (diagonal)
+    var vphS = 0.55 + rs() * 0.42;
+    var ampS = 0.78 + rs() * 0.22;
+    for (var nn = 0; nn < nSet; nn++) {
+      spawnPacket({
+        x0: bx - vxS * (nn * dph / Math.max(0.2, vphS)),  // alineados en diagonal
+        w: 250 + rs() * 450,
+        ph: 0.42 - nn * dph,                     // las traseras aún fuera de campo
+        vph: vphS * (0.92 + rs() * 0.16),
+        vx: vxS,
+        amp: ampS * (0.8 + rs() * 0.25),
+        dur: 14 + rs() * 5,
+        brkPh: 1.9 + rs() * 3.2,
+        r: rs
+      });
+    }
+    setNext = (4.2 + rs() * 5.8) / (0.65 + 0.55 * I);   // calma entre sets
   }
 
   /* ============ GUSTS (ráfagas de viento) ============ */
@@ -292,18 +309,28 @@
       p2.s = 2;
     }
   }
-  // spill de rompedor: glyphs ~≈ cayendo hacia adelante
+  // spill de rompedor: glyphs ~≈ cayendo hacia adelante.
+  // 30% es SPRAY del labio: sale despedido hacia arriba/adelante
+  // antes de caer — el "penacho" blanco sobre la cresta.
   function spawnSpill(xPx, yPx, r) {
     var pt = allocPart(); if (!pt) return;
     var sset = [7, 8, 9, 9, 7];                      // ~ = ≈ ≈ ~
     pt.on = true; pt.sp = 1;                          // no muere al reingresar
     pt.x = xPx;
     pt.y = yPx;
-    pt.vx = (r() - 0.5) * 60 + WIND_DIR * 18;
-    pt.vy = 24 + r() * 66;                            // cae hacia adelante
-    pt.t = 0; pt.ttl = 0.45 + r() * 0.5;
+    if (r() < 0.30) {
+      pt.y -= CS * (0.5 + r() * 1.5);
+      pt.vy = -(50 + r() * 130);                      // spray hacia arriba
+      pt.vx = (r() - 0.5) * 90 + WIND_DIR * 55;
+      pt.ttl = 0.55 + r() * 0.5;
+    } else {
+      pt.vy = 24 + r() * 66;                          // cae hacia adelante
+      pt.vx = (r() - 0.5) * 60 + WIND_DIR * 18;
+      pt.ttl = 0.45 + r() * 0.5;
+    }
+    pt.t = 0;
     pt.g = sset[(r() * sset.length) | 0];
-    pt.s = r() < 0.4 ? 3 : 2;
+    pt.s = r() < 0.45 ? 3 : 2;
   }
   // spray de ráfaga: raya horizontal rápida sobre la superficie
   function spawnSpray(xPx, yPx, r) {
@@ -337,7 +364,7 @@
         if (e > 3) continue;
         var idx = rb + i;
         foam[idx] += amt * Math.exp(-e);
-        if (foam[idx] > 1.6) foam[idx] = 1.6;
+        if (foam[idx] > 1.15) foam[idx] = 1.15;
       }
     }
   }
@@ -420,13 +447,9 @@
       if (!p.sp && p.vy > 0 && p.y > surfaceAt(p.x, T) + 2) p.on = false;
     }
 
-    // paquetes: spawn + avance + ruptura
-    pkNext -= dt;
-    if (pkNext <= 0) {
-      var rpk = mulberry32((SEED ^ Math.imul(pkSpawnN + 53, 0x27D4EB2F)) | 0);
-      spawnPacket();
-      pkNext = (1.7 + rpk() * 2.6) / (0.65 + 0.55 * I);
-    }
+    // paquetes: sets de olas + avance + ruptura dramática
+    setNext -= dt;
+    if (setNext <= 0) spawnSet();
     for (i = 0; i < MAX_PK; i++) {
       var pk = packets[i];
       if (!pk.on) continue;
@@ -435,24 +458,27 @@
       pk.x0 += pk.vx * dt;
       var grow = Math.min(1, pk.age / 2.2);          // nace suave
       var eff = pk.amp * grow * (0.55 + 0.65 * I);
-      // ruptura al alcanzar brkPh (shoaling): ~1.4 s rompiendo
+      var yC = horizon + D0 * (Math.exp(Math.min(pk.ph, 8) / RIDGE_K) - 1);
+      // ruptura al alcanzar brkPh (shoaling): ~1.5 s rompiendo
       if (pk.brk === 0 && pk.ph >= pk.brkPh) pk.brk = 1e-4;
       if (pk.brk > 0) {
-        pk.brk += dt / 1.4;
+        pk.brk += dt / 1.5;
         if (pk.brk >= 1) pk.brk = 0;                 // rompió y murió
         else {
-          // foam + chorro ~≈ cayendo hacia adelante (frente = +dd)
-          var yC = horizon + D0 * (Math.exp(Math.min(pk.ph, 8) / RIDGE_K) - 1);
+          // ROMPEDOR: foam ancha + chorro ~≈ hacia adelante + spray
           var bfrac = Math.sin(pk.brk * 3.14159);     // pico a mitad
           var r = pk.r;
-          var nsp = (bfrac * eff * 3.2) | 0;
+          var nsp = (bfrac * eff * 6.0) | 0;
           for (var s2 = 0; s2 <= nsp; s2++) {
-            spawnSpill(pk.x0 + (r() - 0.5) * pk.w * 1.5,
-                       yC + CS * (1 + r() * 2), r);
+            spawnSpill(pk.x0 + (r() - 0.5) * pk.w * 1.7,
+                       yC + CS * (0.5 + r() * 2.5), r);
           }
-          injectFoam(pk.x0, yC + CS, pk.w * 0.7, CS * 2.2,
-                     0.10 * bfrac * eff + 0.02);
+          injectFoam(pk.x0, yC + CS * 0.5, pk.w * 0.8, CS * 1.5,
+                     (1.9 * bfrac * eff + 0.3) * dt);
         }
+      } else if (eff > 0.72 && pk.ph > 1.0 && pk.ph < 8) {
+        // whitecap vivo: la cima de una ola grande espuma sin romper
+        injectFoam(pk.x0, yC, pk.w * 0.45, CS * 1.3, 0.40 * eff * dt);
       }
       if (pk.age > pk.dur || pk.ph > 9.5 ||
           pk.x0 < -pk.w * 3 || pk.x0 > W + pk.w * 3) pk.on = false;
@@ -562,7 +588,7 @@
     var edgeW = CS * CS * 0.6;
     var tx0 = T * 0.055;
     var t2y = T * 0.018;
-    var pull = 0.62 + 0.35 * I;      // cuánto desplazan las olas a las crestas
+    var pull = 0.40 + 0.24 * I;      // cuánto desplazan las olas a las crestas
     var slopeK = 0.055 + 0.05 * I;   // luz por pendiente del campo
 
     for (j = 0; j < rows; j++) {
@@ -594,23 +620,26 @@
         var u = f - CREST_C; if (u < 0) u += 1;
         var p = 0;
         if (u < CREST_W) p = Math.pow(Math.cos(u / CREST_W * 1.5707963), CREST_P);
-        // textura anclada a la banda SIN shift → sin flicker al viajar
+        // textura anclada a la banda SIN shift → sin flicker al viajar.
+        // Brilla en caras y CERCA de una ola hero; en el fondo se apaga
+        // → jerarquía: la ola domina, el relleno no compite.
+        var pa = pkAmp[i];
         var bandN = Math.floor(ph + 0.5);
         var tex = fbm2(x * 0.0065 - tx0 + bandN * 3.1, bandN * 9.7);
         tex = tex * tex * (3 - 2 * tex);
-        var face = 0.32 + 1.05 * swg[i];
+        var face = 0.20 + 0.90 * swg[i] + 0.55 * pa;
         tex *= face;
-        var gain = 0.55 + 0.55 * (dd / (dd + 180));
+        var gain = 0.50 + 0.55 * (dd / (dd + 200));
         var k = dd < 4 ? 0 : dd > 26 ? 1 : (dd - 4) / 22;
         var pUse = p * (0.30 + 0.70 * k);
-        var v = pUse * (0.42 + 0.28 * swg[i] + 1.15 * tex) * gain * 0.93;
+        var v = pUse * (0.36 + 0.24 * swg[i] + 1.05 * tex) * gain * 0.90;
         v += (1 - k) * (0.26 + 0.42 * tex) * (0.75 + 0.40 * swg[i])
            * (1 - 0.22 * I);
         var e = Math.exp(-(d * d) / edgeW);
         var vEdge = e * (0.48 + 0.52 * edgeTex[i]);
         if (vEdge > v) v = vEdge;
         var t2 = vn2(x * 0.033 + 911.7, ty2);
-        v += (t2 > 0.77 ? (t2 - 0.77) * 0.40 : 0) * (1.25 - 0.85 * swg[i]);
+        v += (t2 > 0.80 ? (t2 - 0.80) * 0.28 : 0) * (0.9 - 0.5 * swg[i]);
         if (drip[i] > 0) v += drip[i] * Math.exp(-dd / 120) * (1 - p) * (0.45 + 0.5 * tex);
         if (boil[i] > 0.01) v += boil[i] * Math.exp(-dd / 42) * (0.45 + 0.85 * tex);
         var lum = v * 1.22 + e * (0.55 + 0.30 * edgeTex[i]) + p * 0.24;
@@ -619,17 +648,27 @@
         var sl = wvD * slopeK;
         if (sl > 0) { lum += sl; v += sl * 0.4; }
         else { v += sl * 0.5; }
-        // cresta del paquete hero (local en ph, con envolvente x)
-        var pa = pkAmp[i];
+        // OLA HERO: perfil asimétrico — frente ancho luminoso (la
+        // pared), lomo corto, y SOMBRA en el valle posterior.
         if (pa > 0.03) {
-          var dq = (ph - pkPh[i]) * 2.7;
-          var pkc = pa * Math.exp(-dq * dq);
+          var dq = ph - pkPh[i];
+          var prof = dq > 0
+            ? Math.exp(-dq * dq / 0.3844)          // frente: σ≈0.62, amplio
+            : Math.exp(-dq * dq / 0.09) * 0.75;    // lomo: σ≈0.30, cae rápido
+          var pkc = pa * prof;
           if (pkc > p) p = pkc;
-          v += pkc * (0.38 + 0.5 * tex);
-          lum += pkc * 0.6;
+          v += pkc * (0.40 + 0.5 * tex);
+          lum += pkc * 0.62;
+          if (pkc > 0.62) lum += (pkc - 0.62) * 0.5;   // cima quema blanco
+          // sombra: el valle detrás de la ola se va a negro
+          if (dq < -0.15 && dq > -1.5) {
+            var sh = pa * Math.exp(-(dq + 0.7) * (dq + 0.7) / 0.1764);
+            v *= 1 - 0.55 * sh;
+            lum *= 1 - 0.40 * sh;
+          }
           // whitecap activo: el frente rompiente quema blanco
           var bk = pkBrk[i];
-          if (bk > 0.1) lum += bk * pkc * 0.5;
+          if (bk > 0.1) { lum += bk * pkc * 0.55; v += bk * pkc * 0.20; }
         }
         // foam persistente: estelas + whitecaps
         var fm = foam[cell];
@@ -641,8 +680,9 @@
         if (v > 1) v = 1; if (lum > 1) lum = 1;
         var gi = (v * (NG - 1) + 0.5) | 0;
         if (gi <= 0) continue;
-        // foam espesa fuerza glyph denso (espuma = sólida)
-        if (fm > 0.5) { var gf = 9 + ((fm - 0.5) * 6) | 0; if (gf > gi) gi = gf; if (gi > NG - 1) gi = NG - 1; }
+        // foam espesa fuerza glyph denso (espuma = sólida), pero nunca
+        // un bloque sólido: el techo deja textura de moteado (hf)
+        if (fm > 0.7 && hf > 0.35) { var gf = 9 + ((fm - 0.7) * 5) | 0; if (gf > gi) gi = gf; if (gi > NG - 1) gi = NG - 1; }
         var si = lum < 0.24 ? 0 : lum < 0.42 ? 1 : lum < 0.58 ? 2 : 3;
         ctx.drawImage(atlas, gi * AC, si * AC, AC, AC, i * CS, ypx, CS, CS);
       }
