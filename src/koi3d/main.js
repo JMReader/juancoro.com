@@ -140,6 +140,7 @@ function makeKoi(url) {
   mat.alphaTest = 0.35;
   mat.depthWrite = false; // sin depth-write no hay z-fight ni culling por cara
   mat.side = THREE.DoubleSide;
+  mat.fog = false; // los peces van nítidos, no sumergidos en la niebla
   const frameU = uniform(0);
   // sheet 4×2: los 3 frames de nado son la fila de arriba (cols 0-2)
   mat.colorNode = texture(tex, uv().mul(vec2(1 / 4, .5)).add(vec2(frameU, .5)));
@@ -150,7 +151,7 @@ function makeKoi(url) {
     new THREE.PlaneGeometry(1, 1),
     new THREE.MeshBasicMaterial({
       map: glowTex, transparent: true, depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.AdditiveBlending, fog: false,
     }));
   glow.scale.setScalar(1.8);
   glow.position.z = -.06;
