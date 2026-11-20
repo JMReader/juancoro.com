@@ -43,7 +43,7 @@ camera.lookAt(0, .5, 0);
 function fitCamera() {
   const aspect = innerWidth / innerHeight;
   camera.aspect = aspect;
-  const halfW = 10; // disco R9.5 + peces asomando + wobble de cámara
+  const halfW = 14; // peces de 13.5 en la rim: centro R9.5 + media cola fuera
   const dist = halfW / (Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * aspect);
   camera.position.z = Math.max(39, dist);
   camera.updateProjectionMatrix();
@@ -141,7 +141,8 @@ function makeKoi(url) {
   mat.depthWrite = false; // sin depth-write no hay z-fight ni culling por cara
   mat.side = THREE.DoubleSide;
   const frameU = uniform(0);
-  mat.colorNode = texture(tex, uv().mul(vec2(1 / 3, 1)).add(vec2(frameU, 0)));
+  // sheet 4×2: los 3 frames de nado son la fila de arriba (cols 0-2)
+  mat.colorNode = texture(tex, uv().mul(vec2(1 / 4, .5)).add(vec2(frameU, .5)));
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), mat);
   mesh.scale.set(FISH_W, FISH_H, 1); // nunca se espeja: gira dentro del plano
   disc.add(mesh);
@@ -274,7 +275,7 @@ function frame() {
       .1 + Math.sin(t * 1.7) * .3,           // bob compartido fuera del plano
     );
     f.mesh.rotation.z = th - Math.PI / 2;
-    f.frameU.value = fr / 3;
+    f.frameU.value = fr / 4;
 
     // estela y burbujas en la cola (local del disco → mundo)
     f.wakeT -= dt; f.bubT -= dt;
