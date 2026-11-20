@@ -42,3 +42,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 jmcoro-dev/
+
+# koi loader build/deploy
+dist-koi/
+koi-loader-site/
+videos/

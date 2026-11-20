@@ -703,11 +703,11 @@ window.KOI = (() => {
     const xW0 =  W * 1.12, xW1 = W * 0.40;  // white: der → cruza
     const T0 = 0.4, T1 = 3.9, TD = 4.55;
 
-    S.schedule(4.72, () => { fxSplash(xB1, 1.0, rng); fxGeyser(xB1, rng); });
-    S.schedule(4.80, () => { fxSplash(xW1, 1.0, rng); fxGeyser(xW1, rng); });
+    S.schedule(4.72, () => { fxSplash(xB1 + 55, 1.0, rng); fxGeyser(xB1 + 55, rng); });
+    S.schedule(4.80, () => { fxSplash(xW1 - 55, 1.0, rng); fxGeyser(xW1 - 55, rng); });
     /* ripple doble: segundo anillo ~0.16s después (la onda que persigue) */
-    S.schedule(4.88, () => { fxRipple(xB1); });
-    S.schedule(4.96, () => { fxRipple(xW1); });
+    S.schedule(4.88, () => { fxRipple(xB1 + 55); });
+    S.schedule(4.96, () => { fxRipple(xW1 - 55); });
     S.schedule(5.45, () => {
       hooks && hooks.onEmerge && hooks.onEmerge(W * 0.5, surf(W * 0.5));
     });
@@ -736,24 +736,30 @@ window.KOI = (() => {
           k.frame = curFrame(k);
           k.spr.update(dt * 1000);
           k.stretch = 0;
-        } else if (t < TD) {                 // antibalanceo → picada
+        } else if (t < TD) {                 // arco del salto → picada
           const p = smooth((t - T1) / (TD - T1));
-          k.x = xb;
-          /* teatro: se hunde un toque, salta leve (mini-breach) y recién
-             ahí rota a nariz-abajo — la picada se "siente" antes de pasar */
-          const dipW = Math.sin(Math.PI * clamp(p / 0.25, 0, 1)) * 10;
-          const hop  = p < 0.25 ? 0
-                     : Math.sin(Math.PI * clamp((p - 0.25) / 0.55, 0, 1)) * 20;
-          k.y = surf(xb) + 10 + dipW - hop;
-          k.frame = p < 0.25 ? F.LEAP_DOWN : p < 0.78 ? F.BREACH : F.DIVE;
+          const dirX = k.mirror ? 1 : -1;
+          /* teatro: se hunde un toque, sale en ARCO real (sube rápido y
+             corona), deriva hacia adelante y cae nariz-abajo al agua */
+          const dipW = Math.sin(Math.PI * clamp(p / 0.20, 0, 1)) * 10;
+          const hopT = clamp((p - 0.20) / 0.65, 0, 1);
+          const arc  = Math.sin(Math.PI * Math.pow(hopT, 0.9));
+          const hopX = dirX * 55 * hopT;
+          k.x = xb + hopX;
+          k.y = surf(xb) + 10 + dipW - arc * 95;
+          k.frame = p < 0.20 ? F.LEAP_DOWN
+                  : hopT < 0.30 ? F.LEAP_UP
+                  : hopT < 0.60 ? F.LEAP_ARC
+                  : hopT < 0.85 ? F.LEAP_DOWN : F.DIVE;
           k.theta = lerp(k.mirror ? 0 : Math.PI, Math.PI / 2,
-                         smooth(clamp((p - 0.62) / 0.38, 0, 1)));
+                         smooth(clamp((hopT - 0.50) / 0.50, 0, 1)));
           k.rotOff = 0;
-          k.stretch = -0.10 * (dipW / 10) + 0.18 * (hop / 20);
+          k.stretch = -0.10 * (dipW / 10) + 0.30 * arc;
         } else {                             // picado → bajo el agua
           const p = clamp((t - TD) / 0.7, 0, 1);
+          const landX = xb + (k.mirror ? 1 : -1) * 55;
           k.frame = F.DIVE; k.theta = Math.PI / 2; k.rotOff = 0;
-          k.x = xb; k.y = surf(xb) + 10 + easeIn(p) * 150;
+          k.x = landX; k.y = surf(landX) + 10 + easeIn(p) * 150;
           k.stretch = -0.28 * Math.exp(-p * 5);
           k.alpha = 1 - smooth(clamp((p - 0.45) / 0.5, 0, 1));
           if (p >= 1) k.visible = false;
