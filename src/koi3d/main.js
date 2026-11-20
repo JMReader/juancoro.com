@@ -77,10 +77,10 @@ const inCell = screenUV.mul(vec2(118, 74)).fract();
 const idx = field.mul(N).floor().clamp(0, N - 1);
 const gUV = vec2(idx.add(inCell.x).div(N), inCell.y);
 const mask = texture(ascTex, gUV).a;
-const deep = vec3(0.002, 0.011, 0.024);
-const lite = vec3(0.36, 0.68, 0.85);
+const deep = vec3(0.004, 0.016, 0.034);
+const lite = vec3(0.42, 0.74, 0.92);
 const asciiCol = deep.add(
-  lite.mul(mask.mul(field.mul(1.15).add(0.05))));
+  lite.mul(mask.mul(field.mul(1.7).add(0.13))));
 const demoCol = mix(
   vec3(0.008, 0.030, 0.058), vec3(0.12, 0.34, 0.50), field);
 
